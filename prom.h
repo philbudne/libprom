@@ -120,7 +120,7 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 
 ////////////////
 // declare a counter with a function to format names (typ. w/ labels)
-// use PROM_FORMAT_COUNTER_FN_NAME(NAME) to get name of function to declare!
+// use PROM_FORMAT_COUNTER_FN_PROTO(NAME) { ...... } to declare
 #define PROM_FORMAT_COUNTER(NAME,HELP) \
     PROM_FORMAT_COUNTER_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
@@ -164,8 +164,8 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 
 ////////////////
 // declare a gauge with a function to format names (typ. w/ labels)
-// use PROM_FORMAT_GAUGE_FN_NAME(NAME) to get name of function to declare!
+// use PROM_FORMAT_GAUGE_FN_PROTO(NAME) { ...... } to declare
 #define PROM_FORMAT_GAUGE(NAME,HELP) \
     PROM_FORMAT_GAUGE_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, GAUGE, #NAME, HELP, NULL, PROM_FORMAT_GAUGE_FN(NAME) }
+	{ 0.0, GAUGE, #NAME, HELP, NULL, PROM_FORMAT_GAUGE_FN_NAME(NAME) }
