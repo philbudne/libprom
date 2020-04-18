@@ -153,6 +153,7 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 // ONLY work on "simple" gauges
 #define PROM_SIMPLE_GAUGE_INC(NAME) _PROM_SIMPLE_GAUGE_NAME(NAME).value++
 #define PROM_SIMPLE_GAUGE_INC_BY(NAME,BY) _PROM_SIMPLE_GAUGE_NAME(NAME).value += BY
+#define PROM_SIMPLE_GAUGE_SET(NAME, VAL) _PROM_SIMPLE_GAUGE_NAME(NAME) = VAL
 
 ////////////////
 // declare gauge with functio to fetch (non-decreasing) value
