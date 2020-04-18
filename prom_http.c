@@ -50,13 +50,13 @@ PROM_FORMAT_COUNTER_FN_PROTO(promhttp_metric_handler_requests_total) {
 }
 
 int
-prom_http_request(PROM_FILE *f, const char *who) {
+prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
     char line[128];
     char cmd[128];
     char path[128];
     char proto[128];
 
-    if (!PROM_GETS(line, sizeof(line), f)) {
+    if (!PROM_GETS(line, sizeof(line), in)) {
 	// XXX count??
 	return -1;
     }
@@ -72,16 +72,16 @@ prom_http_request(PROM_FILE *f, const char *who) {
 	/* FALLTHRU */
     default:
 	// give an HTTP 1.0 response regardless; trying to keep it 99%
-	PROM_PRINTF(f, "HTTP/1.0 400 Bad Request\r\n\r\n");
+	PROM_PRINTF(out, "HTTP/1.0 400 Bad Request\r\n\r\n");
 	code400++;
 	return 0; // for testing: not an I/O error!
     }
 
     if (proto[0]) {	    // eat headers if HTTP/1.0-like request
-	while (PROM_GETS(line, sizeof(line), f) &&
+	while (PROM_GETS(line, sizeof(line), in) &&
 	       line[0] != '\r' && line[0] != '\n')
 	    ;
-	PROM_PRINTF(f, "HTTP/1.0 200 OK\r\n"
+	PROM_PRINTF(out, "HTTP/1.0 200 OK\r\n"
 		    "Server: %s exporter (libprom)\r\n", who);
 	// XXX need Date: ?? I hope not!!!
     }
@@ -89,16 +89,16 @@ prom_http_request(PROM_FILE *f, const char *who) {
     code200++;
     if (strcmp(path, "/metrics") == 0) {
 	if (proto[0])
-	    PROM_PRINTF(f, "Content-Type: text/plain; charset=utf-8\r\n\r\n");
+	    PROM_PRINTF(out, "Content-Type: text/plain; charset=utf-8\r\n\r\n");
 
 	// XXX if Content-Length: becomess necessary,
 	// by providing/requiring a prom_fmemopen function??
-	prom_format_vars(f);
+	prom_format_vars(out);
     }
     else {
 	if (proto[0])
-	    PROM_PRINTF(f, "Content-Type: text/html; charset=utf-8\r\n\r\n");
-	PROM_PRINTF(f,
+	    PROM_PRINTF(out, "Content-Type: text/html; charset=utf-8\r\n\r\n");
+	PROM_PRINTF(out,
 		    "<html>\r\n"
 		    "<head><title>%s exporter</title></head>\r\n"
 		    "<body>\r\n"

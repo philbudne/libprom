@@ -29,6 +29,6 @@ int
 main() {
     prom_process_init();		/* force load */
 
-    while (prom_http_request(fdopen(0, "r+"), "test_http") >= 0)
+    while (prom_http_request(stdin, stdout, "test_http") >= 0)
 	;
 }

@@ -39,7 +39,7 @@
 // public interface:
 extern int prom_format_vars(PROM_FILE *f);
 extern int prom_process_init(void);
-extern int prom_http_request(PROM_FILE *f, const char *who);
+extern int prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who);
 
 #ifdef NO_THREADS
 #define _Atomic
