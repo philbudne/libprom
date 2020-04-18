@@ -49,6 +49,8 @@ prom_format_simple(PROM_FILE *f, struct prom_var *pvp) {
 // returns negative on failure
 int
 prom_format_getter(PROM_FILE *f, struct prom_var *pvp) {
+    // not enough digits to print 2^63 (64-bit +inf)
+    // but avoids printing too many digits for microseconds???
     return PROM_PRINTF(f, "%s %.15g\n", pvp->name, pvp->getter(pvp));
 }
 
