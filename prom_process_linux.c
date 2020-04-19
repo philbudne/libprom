@@ -66,8 +66,10 @@
 
 static time_t boot_time;
 static char proc_stat_file[32];
-static char proc_fd_dir[32];
 static time_t last_proc;
+static int fds;
+
+// one time constants:
 static long tix;			/* ticks per second */
 static long pagesize;			/* bytes/page */
 static struct rlimit maxfds;
@@ -133,9 +135,10 @@ static const char nvars[] = {
 
 static int
 _read_proc(void) {
-    char line[1024];
+    DIR *d;
     FILE *f;
     unsigned n;
+    char line[1024];
 
     if (!STALE(last_proc))
 	return 0;
@@ -157,7 +160,6 @@ _read_proc(void) {
 
 	pid_t pid = getpid();
 	snprintf(proc_stat_file, sizeof(proc_stat_file), "/proc/%d/stat", pid);
-	snprintf(proc_fd_dir, sizeof(proc_fd_dir), "/proc/%d/fd", pid);
 	tix = sysconf(_SC_CLK_TCK);
 	pagesize = sysconf(_SC_PAGESIZE);
 	getrlimit(RLIMIT_NOFILE, &maxfds);
@@ -183,6 +185,18 @@ _read_proc(void) {
     fclose(f);
     if (n < NUM_PROC_STAT)
 	return -1;		// will retry
+
+    if ((d = opendir("/dev/fd"))) {
+	struct dirent *dp;
+
+	fds = 0;
+	// readdir_r is deprecated
+	while ((dp = readdir(d)))
+	    if (dp->d_name[0] != '.')
+		fds++;
+	closedir(d);
+	fds--;			// opendir fd
+    }
 
     last_proc = prom_now;
     return 0;
@@ -220,19 +234,6 @@ PROM_GETTER_GAUGE(process_open_fds,
 
 PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
     (void) pvp;
-    DIR *d = opendir(proc_fd_dir);
-    struct dirent *dp;
-    int fds = 0;
-
-    if (!d)
-	return 0.0;
-
-    // readdir_r is deprecated
-    while ((dp = readdir(d)))
-	if (dp->d_name[0] != '.')
-	    fds++;
-    closedir(d);
-    fds--;	// dir fd
     return (double) fds;
 }
 
