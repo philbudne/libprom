@@ -119,9 +119,10 @@ prom_format_value_dbl(PROM_FILE *f, int *state, double value) {
 int
 prom_format_simple(PROM_FILE *f, struct prom_var *pvp) {
     int state;
+    struct prom_simple_var *psvp = (struct prom_simple_var *)pvp;
 
     prom_format_start(f, &state, pvp);
-    return prom_format_value_ll(f, &state, pvp->value);
+    return prom_format_value_ll(f, &state, psvp->value);
 }
 
 // prom_var.format for a "getter" variable
@@ -129,8 +130,10 @@ prom_format_simple(PROM_FILE *f, struct prom_var *pvp) {
 int
 prom_format_getter(PROM_FILE *f, struct prom_var *pvp) {
     int state;
+    struct prom_getter_var *pgvp = (struct prom_getter_var *)pvp;
+
     prom_format_start(f, &state, pvp);
-    return prom_format_value_dbl(f, &state, pvp->getter());
+    return prom_format_value_dbl(f, &state, pgvp->getter());
 }
 
 static int
@@ -172,7 +175,10 @@ prom_format_vars(PROM_FILE *f) {
     struct prom_var *pvp;
 
     time(&prom_now);
-    for (pvp = START_PROM_SECTION; pvp < STOP_PROM_SECTION; pvp++)
+    pvp = START_PROM_SECTION;
+    while (pvp < STOP_PROM_SECTION) {
 	prom_format_one(f, pvp);	// XXX check return?
+	pvp = ((void *)pvp) + pvp->size;
+    }
     return 0;
 }

@@ -55,28 +55,37 @@ enum prom_var_type {
 #endif
 };
 
+#ifdef __LP64__
+#define PROM_ALIGN __attribute__((aligned(64)))
+#else
+#define PROM_ALIGN
+#endif
+
 struct prom_var {
-    prom_value value;			// for simple vars
+    int size;
     enum prom_var_type type;
     const char *name;
     const char *help;
-    double (*getter)(void);
     int (*format)(PROM_FILE *, struct prom_var *);
-#ifdef PROM_HISTOGRAMS
-    // XXX _could_ "subclass" and put each into its own loader section
+} PROM_ALIGN;
+
+struct prom_simple_var {
+    struct prom_var base;
+    prom_value value;		// for simple vars
+} PROM_ALIGN;
+
+struct prom_getter_var {
+    struct prom_var base;
+    double (*getter)(void);
+} PROM_ALIGN;
+
+struct prom_hist_var {
+    struct prom_var base;
     int nbins;
     const double *limits;
     prom_value *bins;
-    double sum;			// re-use value field? XXX need lock?
-#define HIST_INIT , 0, NULL, NULL, 0.0
-#else
-#define HIST_INIT
-#endif
-}
-#ifdef __LP64__
-    __attribute__((aligned(64)))
-#endif
-    ;
+    double sum;			// XXX need lock?
+} PROM_ALIGN;
 
 extern time_t prom_now;
 #define STALE(T) ((T) == 0 || (prom_now - (T)) > 10)
@@ -124,20 +133,21 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare a simple counter
 #define PROM_SIMPLE_COUNTER(NAME,HELP) \
-    struct prom_var _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, COUNTER, #NAME, HELP, NULL, prom_format_simple HIST_INIT }
+    struct prom_simple_var _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_simple_var), COUNTER, \
+	  #NAME, HELP, prom_format_simple }, 0 }
 
 // ONLY work on "simple" counters
 #define PROM_SIMPLE_COUNTER_INC(NAME) _PROM_SIMPLE_COUNTER_NAME(NAME).value++
 #define PROM_SIMPLE_COUNTER_INC_BY(NAME,BY) _PROM_SIMPLE_COUNTER_NAME(NAME).value += BY
 
 ////////////////
-// declare counter with functio to fetch (non-decreasing) value
+// declare counter with function to fetch (non-decreasing) value
 #define PROM_GETTER_COUNTER(NAME,HELP) \
     PROM_GETTER_COUNTER_FN_PROTO(NAME); \
-    struct prom_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR =	\
-	{ 0.0, COUNTER, #NAME, HELP, \
-	  PROM_GETTER_COUNTER_FN_NAME(NAME), prom_format_getter HIST_INIT }
+    struct prom_getter_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR =	\
+	{ { sizeof(struct prom_getter_var), COUNTER, #NAME, HELP, \
+	  prom_format_getter }, PROM_GETTER_COUNTER_FN_NAME(NAME) }
 
 ////////////////
 // declare a counter with a function to format names (typ. w/ labels)
@@ -145,8 +155,8 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_FORMAT_COUNTER(NAME,HELP) \
     PROM_FORMAT_COUNTER_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, COUNTER, #NAME, HELP, NULL, PROM_FORMAT_COUNTER_FN_NAME(NAME) \
-	HIST_INIT }
+	{ sizeof(struct prom_var), COUNTER, \
+	  #NAME, HELP, PROM_FORMAT_COUNTER_FN_NAME(NAME) }
 
 ////////////////////////////////////////////////////////////////
 // GAUGEs:
@@ -169,8 +179,9 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare a simple gauge
 #define PROM_SIMPLE_GAUGE(NAME,HELP) \
-    struct prom_var _PROM_SIMPLE_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, GAUGE, #NAME, HELP, NULL, prom_format_simple HIST_INIT }
+    struct prom_simple_var _PROM_SIMPLE_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
+	{ sizeof(prom_simple_var), GAUGE, \
+	  #NAME, HELP, NULL, prom_format_simple, 0.0 }
 
 // ONLY work on "simple" gauges
 #define PROM_SIMPLE_GAUGE_INC(NAME) _PROM_SIMPLE_GAUGE_NAME(NAME).value++
@@ -181,9 +192,9 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 // declare gauge with functio to fetch (non-decreasing) value
 #define PROM_GETTER_GAUGE(NAME,HELP) \
     PROM_GETTER_GAUGE_FN_PROTO(NAME); \
-    struct prom_var _PROM_GETTER_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, GAUGE, #NAME, HELP, \
-	  PROM_GETTER_GAUGE_FN_NAME(NAME), prom_format_getter HIST_INIT }
+    struct prom_getter_var _PROM_GETTER_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_getter_var), GAUGE, #NAME, HELP, \
+	  prom_format_getter }, PROM_GETTER_GAUGE_FN_NAME(NAME) }
 
 ////////////////
 // declare a gauge with a function to format names (typ. w/ labels)
@@ -191,31 +202,31 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_FORMAT_GAUGE(NAME,HELP) \
     PROM_FORMAT_GAUGE_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, GAUGE, #NAME, HELP, NULL, PROM_FORMAT_GAUGE_FN_NAME(NAME) \
-	HIST_INIT }
+	{ sizeof(struct prom_var), GAUGE, \
+	  #NAME, HELP, PROM_FORMAT_GAUGE_FN_NAME(NAME) }
 
 ////////////////////////////////
-#ifdef PROM_HISTOGRAMS
 // declare a histogram variable
 #define _PROM_HISTOGRAM_NAME(NAME) PROM_HISTOGRAM_##NAME
 
 // histogram with custom limits
 #define PROM_HISTOGRAM_CUSTOM(NAME,HELP,LIMITS) \
-    struct prom_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, HISTOGRAM, #NAME, HELP, NULL, prom_format_histogram, \
-	sizeof(LIMITS)/sizeof(LIMITS[0]), LIMITS, NULL }
+    struct prom_hist_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
+	{ {sizeof(struct prom_hist_var), HISTOGRAM, \
+	   #NAME, HELP, prom_format_histogram }, \
+	  sizeof(LIMITS)/sizeof(LIMITS[0]), LIMITS, NULL, 0.0 }
 
 // histogram with default limits
 #define PROM_HISTOGRAM(NAME,HELP) \
-    struct prom_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, HISTOGRAM, #NAME, HELP, NULL, prom_format_histogram, \
-	0, NULL, NULL }
+    struct prom_hist_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_hist_var), HISTOGRAM, \
+	  #NAME, HELP, prom_format_histogram }, \
+	  0, NULL, NULL, 0.0 }
 
-extern int prom_histogram_observe(struct prom_var *, double value);
+extern int prom_histogram_observe(struct prom_hist_var *, double value);
 #define PROM_HISTOGRAM_OBSERVE(NAME,VALUE) \
     prom_histogram_observe(&_PROM_HISTOGRAM_NAME(NAME), VALUE)
 
-#endif
 ////////////////////////////////////////////////////////////////
 // public interface:
 
