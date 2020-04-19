@@ -5,11 +5,15 @@ No external dependencies
 
 Written to be portable to POSIX/Un*x-like platforms:
 
-* expects:
-  * GNU-C __attribute__ (puts all variables in their own segment)
+* Only requires standard tools (make & cc)
+  * C99 long long
   * C11 _Atomic
+  * GNU-C attribute (puts all variables in their own loader section)
 
-* only requires standard tools (make & cc)
+* Tested on:
+  * Ubuntu 20.04
+  * FreeBSD 12
+  * macOS Catalina (10.14)
 
 *NOT* a conforming client library!!!!
 
