@@ -13,7 +13,7 @@ Written to be portable to POSIX/Un*x-like platforms:
 
 *NOT* a conforming client library!!!!
 
-Only counters & gauges
+* Implements counters, gauges and histogram
 
 All variables statically defined using macros
 
@@ -45,3 +45,11 @@ Three flavors of gauge:
 * PROM_FORMAT_GAUGE(name, "help string")
   + must define format function using PROM_FORMAT_GAUGE_FN_PROTO(name)
   + format function can output any number of lines w/ labels using PROM_PRINTF(f, ....)
+
+Two flavors of histogram:
+* PROM_HISTOGRAM(name,"help string")
+  + default limits: 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10
+  + PROM_HISTOGRAM_OBSERVE(name, value)
+* PROM_HISTOGRAM_CUSTOM(name, "help string", array_of_double_limits)
+  + array_of_double_limits must declared, const.
+  + PROM_HISTOGRAM_OBSERVE(name, value)
