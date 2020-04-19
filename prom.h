@@ -63,6 +63,7 @@ struct prom_var {
     double (*getter)(struct prom_var *);
     int (*format)(PROM_FILE *, struct prom_var *);
 #ifdef PROM_HISTOGRAMS
+    // XXX _could_ "subclass" and put each into its own loader section
     int nbins;
     const double *limits;
     prom_value *bins;			// re-use value field?
