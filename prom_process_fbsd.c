@@ -33,9 +33,6 @@
 #include <sys/types.h>			/* pid_t */
 #include <sys/resource.h>		/* getrlimit */
 #include <sys/sysctl.h>			/* KERN_PROC_PID */
-#include <sys/param.h>			/* for libprocstat */
-#include <sys/queue.h>			/* for libprocstat */
-#include <sys/socket.h>			/* for libprocstat */
 #include <sys/user.h>			/* kinfo_proc */
 
 #include <dirent.h>			/* opendir... */
@@ -43,7 +40,6 @@
 #include <stdlib.h>			/* atol() */
 #include <time.h>			/* time(), time_t */
 #include <unistd.h>			/* getpid() */
-#include <libprocstat.h>
 
 #ifndef NO_THREADS
 #include <pthread.h>
@@ -74,43 +70,35 @@ static int pagesize;
 
 static int
 _read_proc(void) {
-    static struct procstat *ps;
-    static pid_t mypid;
-    struct kinfo_proc *kip;
-    unsigned count;
     DIR *d;
+    size_t length;
+    struct kinfo_proc ki;
+    static int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
 
     if (!STALE(last_proc))
 	return 0;
 
-    if (!ps) {
-	ps = procstat_open_sysctl();
-	if (!ps)
-	    return -1;
-	mypid = getpid();
+    if (!pagesize) {
+	mib[3] = getpid();
 	getrlimit(RLIMIT_NOFILE, &maxfds);
 	getrlimit(RLIMIT_AS, &maxvsz);
 	pagesize = getpagesize();
     }
 
-    kip = procstat_getprocs(ps, KERN_PROC_PID, mypid, &count);
-    if (!kip)
+    length = sizeof(ki);
+    if (sysctl(mib, 4, &ki, &length, NULL, 0) < 0) {
+	perror("sysctl");
 	return -1;
-
-    if (count) {
-	seconds = ((kip->ki_rusage.ru_utime.tv_sec +
-		    kip->ki_rusage.ru_stime.tv_sec) +
-		   (kip->ki_rusage.ru_utime.tv_usec +
-		    kip->ki_rusage.ru_stime.tv_usec) / 1000000.0);
-	start = (kip->ki_start.tv_sec +
-		 kip->ki_start.tv_usec / 1000000.0);
-	rss = kip->ki_rssize * pagesize;
-	vsz = kip->ki_size;		// seems like bytes!
-	threads = kip->ki_numthreads;
     }
-    procstat_freeprocs(ps, kip);
-    if (count == 0)
-	return -1;
+    seconds = ((ki.ki_rusage.ru_utime.tv_sec  +
+		ki.ki_rusage.ru_stime.tv_sec) +
+	       (ki.ki_rusage.ru_utime.tv_usec +
+		ki.ki_rusage.ru_stime.tv_usec) / 1000000.0);
+    start = (ki.ki_start.tv_sec +
+	     ki.ki_start.tv_usec / 1000000.0);
+    rss = ki.ki_rssize * pagesize;
+    vsz = ki.ki_size;		// seems like bytes!
+    threads = ki.ki_numthreads;
 
     fds = 0;
     if ((d = opendir("/dev/fd"))) {
