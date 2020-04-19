@@ -2,7 +2,7 @@
 
 OS := $(shell uname)
 
-CFLAGS=-O -g -Wextra -Wall -I.
+CFLAGS=-O -g -Wextra -Wall -Wmissing-prototypes -I.
 
 ALL=libprom.a test_http
 all:	$(ALL)
