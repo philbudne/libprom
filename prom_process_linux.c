@@ -33,46 +33,19 @@
 #include <sys/types.h>			/* pid_t */
 #include <sys/resource.h>		/* getrlimit */
 
-#include <dirent.h>			/* opendir... */
 #include <string.h>			/* strncmp */
 #include <stdlib.h>			/* atol() */
 #include <time.h>			/* time(), time_t */
 #include <unistd.h>			/* getpid(), sysconf() */
 
-#ifndef NO_THREADS
-#include <pthread.h>
-
-#ifdef __USE_GNU
-#define MUTEX_INIT PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP
-#else
-#define MUTEX_INIT PTHREAD_MUTEX_INITIALIZER
-#endif
-
-#define DECLARE_LOCK(NAME) \
-    static pthread_mutex_t NAME = MUTEX_INIT;
-
-#define LOCK(NAME) pthread_mutex_lock(&NAME)
-#define UNLOCK(NAME) pthread_mutex_unlock(&NAME)
-
-#else
-#define DECLARE_LOCK(NAME)
-#define LOCK(NAME)
-#define UNLOCK(NAME)
-#endif
-
 #include "prom.h"
+#include "common.h"
 
 ////////////////
-
-static time_t boot_time;
-static char proc_stat_file[32];
-static time_t last_proc;
-static int fds;
 
 // one time constants:
 static long tix;			/* ticks per second */
 static long pagesize;			/* bytes/page */
-static struct rlimit maxfds;
 
 // data from /proc/PID/stat
 // from proc(5) man page
@@ -135,34 +108,18 @@ static const char nvars[] = {
 
 static int
 _read_proc(void) {
-    DIR *d;
     FILE *f;
     unsigned n;
-    char line[1024];
+    static time_t last_proc;
+    static char proc_stat_file[32];
 
     if (!STALE(last_proc))
 	return 0;
 
-    if (boot_time <= 0) {		/* once only */
-	f = fopen("/proc/stat", "r");
-	if (!f)
-	    return -1;
-
-	while (fgets(line, sizeof(line), f)) {
-	    if (strncmp(line, "btime", 5) == 0) {
-		boot_time = atol(line+6);
-		break;
-	    }
-	}
-	fclose(f);
-	if (boot_time <= 0)
-	    return -1;
-
-	pid_t pid = getpid();
-	snprintf(proc_stat_file, sizeof(proc_stat_file), "/proc/%d/stat", pid);
+    if (!pagesize) {		/* once only */
+	snprintf(proc_stat_file, sizeof(proc_stat_file), "/proc/%d/stat", getpid());
 	tix = sysconf(_SC_CLK_TCK);
 	pagesize = sysconf(_SC_PAGESIZE);
-	getrlimit(RLIMIT_NOFILE, &maxfds);
     }
 
     f = fopen(proc_stat_file, "r");
@@ -186,26 +143,14 @@ _read_proc(void) {
     if (n < NUM_PROC_STAT)
 	return -1;		// will retry
 
-    if ((d = opendir("/dev/fd"))) {
-	struct dirent *dp;
-
-	fds = 0;
-	// readdir_r is deprecated
-	while ((dp = readdir(d)))
-	    if (dp->d_name[0] != '.')
-		fds++;
-	closedir(d);
-	fds--;			// opendir fd
-    }
-
     last_proc = prom_now;
     return 0;
 }
 
 static int
 read_proc(void) {
-    int ret;
     DECLARE_LOCK(read_proc_lock);
+    int ret;
 
     LOCK(read_proc_lock);
     ret = _read_proc();
@@ -226,24 +171,6 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
     
     return (((double)proc_stat.utime)/tix +
 	    ((double)proc_stat.stime)/tix);
-}
-
-////////////////
-PROM_GETTER_GAUGE(process_open_fds,
-		  "Number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
-    (void) pvp;
-    return (double) fds;
-}
-
-////////////////
-PROM_GETTER_GAUGE(process_max_fds,
-		  "Maximum number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
-    (void) pvp;
-    return maxfds.rlim_cur;
 }
 
 ////////////////
@@ -295,18 +222,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
 #endif
 
 ////////////////
-PROM_GETTER_GAUGE(process_start_time_seconds,
-		  "Start time of the process since unix epoch in seconds");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_start_time_seconds) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-
-    return boot_time + ((double)proc_stat.start) / tix;
-}
-
-////////////////
 // not in the process_ namespace
 
 PROM_GETTER_GAUGE(num_threads,
@@ -325,5 +240,5 @@ PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
 // no-op call this to force loading this file
 int
 prom_process_init(void) {
-    return 0;
+    return prom_process_common_init();
 }

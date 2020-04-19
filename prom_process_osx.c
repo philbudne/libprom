@@ -31,7 +31,6 @@
  */
 
 #include <sys/types.h>			/* pid_t */
-#include <sys/time.h>			/* gettimeofday */
 #include <sys/resource.h>		/* getrlimit, getrusage */
 
 #include <mach/task.h>
@@ -62,23 +61,13 @@
 
 #include "prom.h"
 
-static void get_start_time(void) __attribute((constructor));
 ////////////////
 
 static time_t last_proc;
 static struct rlimit maxfds, maxvsz;
-static double rss, vsz, start, seconds;
+static double rss, vsz, seconds;
 static int fds;
 
-static void
-get_start_time(void) {
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-    start = tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
-// thanks to miknight.blogspot.com/2005/11/resident-set-size-in-mac-os-x.html for a start!
 static int
 _read_proc(void) {
     DIR *d;
@@ -93,10 +82,10 @@ _read_proc(void) {
     if (!maxfds.rlim_cur) {
 	if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
 	    return -1;
-	getrlimit(RLIMIT_NOFILE, &maxfds);
 	getrlimit(RLIMIT_AS, &maxvsz);
     }
 
+    // thanks to miknight.blogspot.com/2005/11/resident-set-size-in-mac-os-x.html for a start!
     mtbic = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(task, MACH_TASK_BASIC_INFO, (task_info_t)&mtbi, &mtbic) != KERN_SUCCESS)
 	return -1;
@@ -161,15 +150,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_max_fds,
-		  "Maximum number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
-    (void) pvp;
-    return maxfds.rlim_cur;
-}
-
-////////////////
 PROM_GETTER_GAUGE(process_virtual_memory_bytes,
 		  "Virtual memory size in bytes");
 
@@ -203,18 +183,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_start_time_seconds,
-		  "Start time of the process since unix epoch in seconds");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_start_time_seconds) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-
-    return start;
-}
-
-////////////////
 // not in the process_ namespace
 #if 0
 PROM_GETTER_GAUGE(num_threads,
@@ -234,5 +202,6 @@ PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
 // no-op call this to force loading this file
 int
 prom_process_init(void) {
-    return 0;
+    return prom_process_common_init();
 }
+

@@ -31,57 +31,35 @@
  */
 
 #include <sys/types.h>			/* pid_t */
-#include <sys/resource.h>		/* getrlimit */
 #include <sys/sysctl.h>			/* KERN_PROC_PID */
 #include <sys/user.h>			/* kinfo_proc */
 
-#include <dirent.h>			/* opendir... */
 #include <string.h>			/* strncmp */
-#include <stdlib.h>			/* atol() */
 #include <time.h>			/* time(), time_t */
 #include <unistd.h>			/* getpid() */
 
-#ifndef NO_THREADS
-#include <pthread.h>
-
-#define MUTEX_INIT PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP
-
-#define DECLARE_LOCK(NAME) \
-    static pthread_mutex_t NAME = MUTEX_INIT;
-
-#define LOCK(NAME) pthread_mutex_lock(&NAME)
-#define UNLOCK(NAME) pthread_mutex_unlock(&NAME)
-
-#else
-#define DECLARE_LOCK(NAME)
-#define LOCK(NAME)
-#define UNLOCK(NAME)
-#endif
-
 #include "prom.h"
+#include "common.h"
 
 ////////////////
 
-static time_t last_proc;
-static struct rlimit maxfds, maxvsz;
-static double rss, vsz, start, seconds;
-static int threads, fds;
+static double rss, vsz, seconds;
+static int threads;
 static int pagesize;
 
+// helper, called under lock
 static int
 _read_proc(void) {
-    DIR *d;
     size_t length;
     struct kinfo_proc ki;
     static int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
+    static time_t last_proc;
 
     if (!STALE(last_proc))
 	return 0;
 
     if (!pagesize) {
 	mib[3] = getpid();
-	getrlimit(RLIMIT_NOFILE, &maxfds);
-	getrlimit(RLIMIT_AS, &maxvsz);
 	pagesize = getpagesize();
     }
 
@@ -94,22 +72,9 @@ _read_proc(void) {
 		ki.ki_rusage.ru_stime.tv_sec) +
 	       (ki.ki_rusage.ru_utime.tv_usec +
 		ki.ki_rusage.ru_stime.tv_usec) / 1000000.0);
-    start = (ki.ki_start.tv_sec +
-	     ki.ki_start.tv_usec / 1000000.0);
     rss = ki.ki_rssize * pagesize;
     vsz = ki.ki_size;		// seems like bytes!
     threads = ki.ki_numthreads;
-
-    fds = 0;
-    if ((d = opendir("/dev/fd"))) {
-	struct dirent *dp;
-	while ((dp = readdir(d))) {
-	    if (dp->d_name[0] != '.')
-		fds++;
-	}
-	// no open fd to account for???
-	closedir(d);
-    }
 
     last_proc = prom_now;
     return 0;
@@ -117,8 +82,8 @@ _read_proc(void) {
 
 static int
 read_proc(void) {
-    int ret;
     DECLARE_LOCK(read_proc_lock);
+    int ret;
 
     LOCK(read_proc_lock);
     ret = _read_proc();
@@ -141,27 +106,6 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_open_fds,
-		  "Number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-
-    return fds;
-}
-
-////////////////
-PROM_GETTER_GAUGE(process_max_fds,
-		  "Maximum number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
-    (void) pvp;
-    return maxfds.rlim_cur;
-}
-
-////////////////
 PROM_GETTER_GAUGE(process_virtual_memory_bytes,
 		  "Virtual memory size in bytes");
 
@@ -177,7 +121,12 @@ PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
 		  "Maximum amount of virtual memory available in bytes");
 
 PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
+    static struct rlimit maxvsz;
+
     (void) pvp;
+    if (!maxvsz.rlim_cur)
+	getrlimit(RLIMIT_AS, &maxvsz);
+
     return maxvsz.rlim_cur;
 }
 
@@ -206,18 +155,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
 #endif
 
 ////////////////
-PROM_GETTER_GAUGE(process_start_time_seconds,
-		  "Start time of the process since unix epoch in seconds");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_start_time_seconds) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-
-    return start;
-}
-
-////////////////
 // not in the process_ namespace
 PROM_GETTER_GAUGE(num_threads,
 		  "Number of process threads");
@@ -235,5 +172,5 @@ PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
 // no-op call this to force loading this file
 int
 prom_process_init(void) {
-    return 0;
+    return prom_process_common_init();
 }
