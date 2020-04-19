@@ -49,7 +49,6 @@ static double rss, vsz, seconds;
 
 static int
 _read_proc(void) {
-    DIR *d;
     struct rusage ru;
     static task_t task;
     static time_t last_proc;
@@ -59,7 +58,7 @@ _read_proc(void) {
     if (!STALE(last_proc))
 	return 0;
 
-    if (!maxfds.rlim_cur) {
+    if (!task) {
 	if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
 	    return -1;
     }
