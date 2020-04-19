@@ -1,5 +1,5 @@
 // Phil Budne
-// 2020-04-11
+// 2020-04-18
 //
 // prometheus process vars common on Un*xy systems
 
@@ -15,6 +15,7 @@ static void get_start_time(void) __attribute((constructor));
 
 static double start;
 
+// runs as a constructor:
 static void
 get_start_time(void) {
     struct timeval tv;
@@ -79,8 +80,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
 }
 
 ////////////////
-#ifndef __Linux__
-// less useful on LP64 systems than on ILP32
 PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
 		  "Maximum amount of virtual memory available in bytes");
 
@@ -93,11 +92,11 @@ PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
 
     return maxvsz.rlim_cur;
 }
-#endif
+
 ////////////////
 
+// called from prom_process_init() to force loading
 int
 prom_process_common_init(void) {
     return 0;
 }
-

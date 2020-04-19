@@ -185,18 +185,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
 }
 
 ////////////////
-#if 0
-PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
-		  "Maximum amount of virtual memory available in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
-    (void) pvp;
-    // not avail from getrlimit. need to read /proc/NN/limits?
-    return 0.0;
-}
-#endif
-
-////////////////
 PROM_GETTER_GAUGE(process_resident_memory_bytes,
 		  "Resident memory size in bytes");
 
