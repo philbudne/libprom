@@ -36,9 +36,7 @@
 #include <mach/task.h>
 #include <mach/mach_init.h>
 
-#include <dirent.h>			/* opendir... */
 #include <string.h>			/* strncmp */
-#include <stdlib.h>			/* atol() */
 #include <time.h>			/* time(), time_t */
 #include <unistd.h>			/* getpid() */
 
@@ -63,16 +61,15 @@
 
 ////////////////
 
-static time_t last_proc;
-static struct rlimit maxfds, maxvsz;
+static struct rlimit maxvsz;
 static double rss, vsz, seconds;
-static int fds;
 
 static int
 _read_proc(void) {
     DIR *d;
     struct rusage ru;
     static task_t task;
+    static time_t last_proc;
     mach_task_basic_info_data_t mtbi;
     mach_msg_type_number_t mtbic;
     
@@ -135,18 +132,6 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
 	return 0.0;
 
     return seconds;
-}
-
-////////////////
-PROM_GETTER_GAUGE(process_open_fds,
-		  "Number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-
-    return fds;
 }
 
 ////////////////
