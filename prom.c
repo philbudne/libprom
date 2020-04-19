@@ -27,12 +27,23 @@
 
 #include "prom.h"
 
+#ifdef __APPLE__
+#include <mach-o/getsect.h>
+#ifdef __LP64__
+#define SECTION section_64
+#else
+#define SECTION section
+#endif // APPLE, not LP64
+
+#else // not __APPLE__
+
 #define CONC(X,Y) CONC2(X,Y)
 #define CONC2(X,Y) X##Y
 #define START_PROM_SECTION CONC(__start_,PROM_SECTION_NAME)
 #define STOP_PROM_SECTION CONC(__stop_,PROM_SECTION_NAME)
 
 extern struct prom_var START_PROM_SECTION[1], STOP_PROM_SECTION[1];
+#endif // not __APPLE__
 
 // globals
 time_t prom_now;
@@ -70,6 +81,21 @@ prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
 
 int
 prom_format_vars(PROM_FILE *f) {
+#ifdef __APPLE__
+    static struct prom_var *start_prom_section, *stop_prom_section;
+
+    if (!start_prom_section) {
+	const struct SECTION *sect = getsectbyname(PROM_SEGMENT, PROM_SECTION_STR);
+	if (sect) {
+	    start_prom_section = (struct prom_var *) sect->addr;
+	    stop_prom_section  = (struct prom_var *) (sect->addr + sect->size);
+	}
+	else
+	    return -1;
+    }
+#define START_PROM_SECTION start_prom_section
+#define STOP_PROM_SECTION stop_prom_section
+#endif
     struct prom_var *pvp;
 
     time(&prom_now);

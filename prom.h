@@ -78,8 +78,16 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_STR2(NAME) #NAME
 #define PROM_SECTION_STR PROM_STR(PROM_SECTION_NAME)
 
+#ifdef __APPLE__
+// Mach-O (OS X) wants section("segment,section")
+#define PROM_SEGMENT "__DATA"
+#define PROM_SECTION_PREFIX PROM_SEGMENT ","
+#else
+#define PROM_SECTION_PREFIX
+#endif
+
 // OSX, ISTR wants something different
-#define PROM_SECTION_ATTR __attribute__((section (PROM_SECTION_STR)))
+#define PROM_SECTION_ATTR __attribute__((section (PROM_SECTION_PREFIX PROM_SECTION_STR)))
 
 ////////////////////////////////////////////////////////////////
 // COUNTERs:
