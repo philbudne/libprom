@@ -168,7 +168,8 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
     (void) pvp;
     if (read_proc() < 0)
 	return 0;
-    
+
+    // getrusage provides better granularity, but this is free
     return (((double)proc_stat.utime)/tix +
 	    ((double)proc_stat.stime)/tix);
 }
