@@ -110,9 +110,7 @@ prom_format_value_ll(PROM_FILE *f, int *state, long long value) {
 
 int
 prom_format_value_dbl(PROM_FILE *f, int *state, double value) {
-    // not enough digits to print 2^63 (64-bit +inf)
-    // but avoids printing too many digits for microseconds???
-    return prom_format_value(f, state, "%.15g", value);
+    return prom_format_value(f, state, PROM_DOUBLE_FORMAT, value);
 }
 
 // prom_var.format for a simple variable
@@ -144,6 +142,11 @@ prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     case COUNTER:
 	PROM_PRINTF(f, "# TYPE %s%s counter\n", prom_namespace, pvp->name);
 	break;
+#ifdef PROM_HISTOGRAMS
+    case HISTOGRAM:
+	PROM_PRINTF(f, "# TYPE %s%s histogram\n", prom_namespace, pvp->name);
+	break;
+#endif
     }
     PROM_PRINTF(f, "# HELP %s%s %s.\n", prom_namespace, pvp->name, pvp->help);
     return (pvp->format)(f, pvp);

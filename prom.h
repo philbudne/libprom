@@ -47,7 +47,13 @@ typedef _Atomic long long prom_value;
 
 ////////////////
 
-enum prom_var_type { GAUGE, COUNTER };
+enum prom_var_type {
+    GAUGE,
+    COUNTER,
+#ifdef PROM_HISTOGRAMS
+    HISTOGRAM
+#endif
+};
 
 struct prom_var {
     prom_value value;			// for simple vars
@@ -56,6 +62,14 @@ struct prom_var {
     const char *help;
     double (*getter)(struct prom_var *);
     int (*format)(PROM_FILE *, struct prom_var *);
+#ifdef PROM_HISTOGRAMS
+    int nbins;
+    const double *limits;
+    prom_value *bins;			// re-use value field?
+#define HIST_INIT , 0, NULL, NULL
+#else
+#define HIST_INIT
+#endif
 }
 #ifdef __LP64__
     __attribute__((aligned(64)))
@@ -67,6 +81,7 @@ extern time_t prom_now;
 
 int prom_format_simple(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
+int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 
 // all prom_vars end up contiguous in a loader segment
 #define PROM_SECTION_NAME prometheus
@@ -108,7 +123,7 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 // declare a simple counter
 #define PROM_SIMPLE_COUNTER(NAME,HELP) \
     struct prom_var _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, COUNTER, #NAME, HELP, NULL, prom_format_simple }
+	{ 0.0, COUNTER, #NAME, HELP, NULL, prom_format_simple HIST_INIT }
 
 // ONLY work on "simple" counters
 #define PROM_SIMPLE_COUNTER_INC(NAME) _PROM_SIMPLE_COUNTER_NAME(NAME).value++
@@ -120,7 +135,7 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
     PROM_GETTER_COUNTER_FN_PROTO(NAME); \
     struct prom_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR =	\
 	{ 0.0, COUNTER, #NAME, HELP, \
-	  PROM_GETTER_COUNTER_FN_NAME(NAME), prom_format_getter }
+	  PROM_GETTER_COUNTER_FN_NAME(NAME), prom_format_getter HIST_INIT }
 
 ////////////////
 // declare a counter with a function to format names (typ. w/ labels)
@@ -128,7 +143,8 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_FORMAT_COUNTER(NAME,HELP) \
     PROM_FORMAT_COUNTER_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, COUNTER, #NAME, HELP, NULL, PROM_FORMAT_COUNTER_FN_NAME(NAME) }
+	{ 0.0, COUNTER, #NAME, HELP, NULL, PROM_FORMAT_COUNTER_FN_NAME(NAME) \
+	HIST_INIT }
 
 ////////////////////////////////////////////////////////////////
 // GAUGEs:
@@ -152,7 +168,7 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 // declare a simple gauge
 #define PROM_SIMPLE_GAUGE(NAME,HELP) \
     struct prom_var _PROM_SIMPLE_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, GAUGE, #NAME, HELP, NULL, prom_format_simple }
+	{ 0.0, GAUGE, #NAME, HELP, NULL, prom_format_simple HIST_INIT }
 
 // ONLY work on "simple" gauges
 #define PROM_SIMPLE_GAUGE_INC(NAME) _PROM_SIMPLE_GAUGE_NAME(NAME).value++
@@ -165,7 +181,7 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
     PROM_GETTER_GAUGE_FN_PROTO(NAME); \
     struct prom_var _PROM_GETTER_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
 	{ 0.0, GAUGE, #NAME, HELP, \
-	  PROM_GETTER_GAUGE_FN_NAME(NAME), prom_format_getter }
+	  PROM_GETTER_GAUGE_FN_NAME(NAME), prom_format_getter HIST_INIT }
 
 ////////////////
 // declare a gauge with a function to format names (typ. w/ labels)
@@ -173,8 +189,31 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_FORMAT_GAUGE(NAME,HELP) \
     PROM_FORMAT_GAUGE_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ 0.0, GAUGE, #NAME, HELP, NULL, PROM_FORMAT_GAUGE_FN_NAME(NAME) }
+	{ 0.0, GAUGE, #NAME, HELP, NULL, PROM_FORMAT_GAUGE_FN_NAME(NAME) \
+	HIST_INIT }
 
+////////////////////////////////
+#ifdef PROM_HISTOGRAMS
+// declare a histogram variable
+#define _PROM_HISTOGRAM_NAME(NAME) PROM_HISTOGRAM_##NAME
+
+// histogram with custom limits
+#define PROM_HISTOGRAM_CUSTOM(NAME,HELP,LIMITS) \
+    struct prom_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
+	{ 0.0, HISTOGRAM, #NAME, HELP, NULL, prom_format_histogram, \
+	sizeof(LIMITS)/sizeof(LIMITS[0]), LIMITS, NULL }
+
+// histogram with default limits
+#define PROM_HISTOGRAM(NAME,HELP) \
+    struct prom_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
+	{ 0.0, HISTOGRAM, #NAME, HELP, NULL, prom_format_histogram, \
+	0, NULL, NULL }
+
+extern int prom_histogram_observe(struct prom_var *, double value);
+#define PROM_HISTOGRAM_OBSERVE(NAME,VALUE) \
+    prom_histogram_observe(&_PROM_HISTOGRAM_NAME(NAME), VALUE)
+
+#endif
 ////////////////////////////////////////////////////////////////
 // public interface:
 
@@ -193,3 +232,9 @@ extern int prom_format_value(PROM_FILE *f, int *state, const char *format, ...)
     __attribute__ ((__format__ (__printf__, 3, 4)));
 extern int prom_format_value_ll(PROM_FILE *f, int *state, long long value);
 extern int prom_format_value_dbl(PROM_FILE *f, int *state, double value);
+
+#ifndef PROM_DOUBLE_FORMAT
+// not enough digits to print 2^63 (64-bit +inf)
+// but avoids printing too many digits for microseconds???
+#define PROM_DOUBLE_FORMAT "%.15g"
+#endif
