@@ -130,7 +130,7 @@ int
 prom_format_getter(PROM_FILE *f, struct prom_var *pvp) {
     int state;
     prom_format_start(f, &state, pvp);
-    return prom_format_value_dbl(f, &state, pvp->getter(pvp));
+    return prom_format_value_dbl(f, &state, pvp->getter());
 }
 
 static int

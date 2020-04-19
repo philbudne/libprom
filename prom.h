@@ -60,7 +60,7 @@ struct prom_var {
     enum prom_var_type type;
     const char *name;
     const char *help;
-    double (*getter)(struct prom_var *);
+    double (*getter)(void);
     int (*format)(PROM_FILE *, struct prom_var *);
 #ifdef PROM_HISTOGRAMS
     // XXX _could_ "subclass" and put each into its own loader section
@@ -117,7 +117,7 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_FORMAT_COUNTER_FN_NAME(NAME) NAME##_format
 
 // use to create functions!!
-#define PROM_GETTER_COUNTER_FN_PROTO(NAME) static double PROM_GETTER_COUNTER_FN_NAME(NAME)(struct prom_var *pvp)
+#define PROM_GETTER_COUNTER_FN_PROTO(NAME) static double PROM_GETTER_COUNTER_FN_NAME(NAME)(void)
 #define PROM_FORMAT_COUNTER_FN_PROTO(NAME) static int PROM_FORMAT_COUNTER_FN_NAME(NAME)(PROM_FILE *f, struct prom_var *pvp)
 
 ////////////////
@@ -162,7 +162,7 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_GETTER_GAUGE_FN_NAME(NAME) NAME##_getter
 #define PROM_FORMAT_GAUGE_FN_NAME(NAME) NAME##_format
 
-#define PROM_GETTER_GAUGE_FN_PROTO(NAME) static double PROM_GETTER_GAUGE_FN_NAME(NAME)(struct prom_var *pvp)
+#define PROM_GETTER_GAUGE_FN_PROTO(NAME) static double PROM_GETTER_GAUGE_FN_NAME(NAME)(void)
 #define PROM_FORMAT_GAUGE_FN_PROTO(NAME) static int PROM_FORMAT_GAUGE_FN_NAME(NAME)(PROM_FILE *f, struct prom_var *pvp)
 
 ////////////////

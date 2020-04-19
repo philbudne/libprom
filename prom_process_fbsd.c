@@ -98,7 +98,6 @@ PROM_GETTER_COUNTER(process_cpu_seconds_total,
 		    "Total user and system CPU time spent in seconds");
 
 PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
-    (void) pvp;
     if (read_proc() < 0)
 	return 0.0;
 
@@ -110,7 +109,6 @@ PROM_GETTER_GAUGE(process_virtual_memory_bytes,
 		  "Virtual memory size in bytes");
 
 PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
-    (void) pvp;
     if (read_proc() < 0)
 	return 0.0;
     return vsz;
@@ -121,7 +119,6 @@ PROM_GETTER_GAUGE(process_resident_memory_bytes,
 		  "Resident memory size in bytes");
 
 PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
-    (void) pvp;
     if (read_proc() < 0)
 	return 0.0;
     return rss;				/* XXX */
@@ -134,7 +131,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 PROM_GETTER_GAUGE(process_heap_bytes,"Process heap size in bytes");
 
 PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
-    (void) pvp;
     // mallctl stats.allocated??
     return -1;
 }
@@ -146,7 +142,6 @@ PROM_GETTER_GAUGE(num_threads,
 		  "Number of process threads");
 
 PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
-    (void) pvp;
     if (read_proc() < 0)
 	return 0.0;
 

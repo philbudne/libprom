@@ -29,7 +29,6 @@ PROM_GETTER_GAUGE(process_start_time_seconds,
 		  "Start time of the process in seconds since Unix epoch");
 
 PROM_GETTER_GAUGE_FN_PROTO(process_start_time_seconds) {
-    (void) pvp;
     return start;
 }
 
@@ -43,7 +42,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
     static unsigned fds;
     DECLARE_LOCK(fds_lock);
 
-    (void) pvp;
 
     LOCK(fds_lock);
     if (STALE(last_fds) &&
@@ -72,7 +70,6 @@ PROM_GETTER_GAUGE(process_max_fds,
 PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
     static struct rlimit maxfds;
 
-    (void) pvp;
     if (!maxfds.rlim_cur)
 	getrlimit(RLIMIT_NOFILE, &maxfds);
 
@@ -88,7 +85,6 @@ PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
 PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
     static struct rlimit maxvsz;
 
-    (void) pvp;
     if (!maxvsz.rlim_cur)
 	getrlimit(RLIMIT_AS, &maxvsz);
 
@@ -103,7 +99,6 @@ PROM_GETTER_COUNTER(process_cpu_seconds_total,
 PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
     struct rusage ru;
 
-    (void) pvp;
     if (getrusage(RUSAGE_SELF, &ru) < 0)
 	return -1;
     return ((ru.ru_utime.tv_sec  + ru.ru_stime.tv_sec) +
