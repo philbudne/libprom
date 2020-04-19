@@ -66,8 +66,9 @@ struct prom_var {
     // XXX _could_ "subclass" and put each into its own loader section
     int nbins;
     const double *limits;
-    prom_value *bins;			// re-use value field?
-#define HIST_INIT , 0, NULL, NULL
+    prom_value *bins;
+    double sum;			// re-use value field? XXX need lock?
+#define HIST_INIT , 0, NULL, NULL, 0.0
 #else
 #define HIST_INIT
 #endif
