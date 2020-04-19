@@ -94,17 +94,6 @@ _read_proc(void) {
     seconds = ((ru.ru_utime.tv_sec  + ru.ru_stime.tv_sec) +
 	       (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1000000.0);
 
-    fds = 0;
-    if ((d = opendir("/dev/fd"))) {
-	struct dirent *dp;
-	while ((dp = readdir(d))) {
-	    if (dp->d_name[0] != '.')
-		fds++;
-	}
-	closedir(d);
-	fds--;				/* discount opendir fd */
-    }
-
     last_proc = prom_now;
     return 0;
 }
