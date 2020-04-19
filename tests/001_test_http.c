@@ -28,6 +28,7 @@
 int
 main() {
     prom_process_init();		/* force load */
+    prom_namespace = "test_";
 
     while (prom_http_request(stdin, stdout, "test_http") >= 0)
 	;

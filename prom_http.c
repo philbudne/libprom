@@ -36,12 +36,14 @@ PROM_FORMAT_COUNTER(promhttp_metric_handler_requests_total,
 		  "Total number of scrapes by HTTP status code");
 
 PROM_FORMAT_COUNTER_FN_PROTO(promhttp_metric_handler_requests_total) {
-    (void) pvp;
+    int state;
 
 #define FMT_CODE(CODE) \
-    PROM_PRINTF(f, \
-		"promhttp_metric_handler_requests_total{code=\"%d\"} %lld\n", \
-		CODE, code##CODE)
+    do { \
+	prom_format_start(f, &state, pvp); \
+	prom_format_label(f, &state, "code", "%d", CODE); \
+	prom_format_value(f, &state, "%lld", code##CODE); \
+    } while (0)
 
     FMT_CODE(200);
     FMT_CODE(400);

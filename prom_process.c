@@ -80,6 +80,8 @@ PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
 }
 
 ////////////////
+// XXX make this optional?
+
 PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
 		  "Maximum amount of virtual memory available in bytes");
 
@@ -92,6 +94,22 @@ PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
 
     return maxvsz.rlim_cur;
 }
+
+////////////////
+#ifdef USE_GETRUSAGE
+PROM_GETTER_COUNTER(process_cpu_seconds_total,
+		    "Total user and system CPU time spent in seconds");
+
+PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
+    struct rusage ru;
+
+    (void) pvp;
+    if (getrusage(RUSAGE_SELF, &ru) < 0)
+	return -1;
+    return ((ru.ru_utime.tv_sec  + ru.ru_stime.tv_sec) +
+	    (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1000000.0);
+}
+#endif
 
 ////////////////
 

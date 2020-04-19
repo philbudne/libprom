@@ -34,12 +34,9 @@
 #define PROM_FILE FILE
 #define PROM_PRINTF fprintf
 #define PROM_GETS fgets
+#define PROM_PUTS fputs
+#define PROM_PUTC fputc
 #endif
-
-// public interface:
-extern int prom_format_vars(PROM_FILE *f);
-extern int prom_process_init(void);
-extern int prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who);
 
 #ifdef NO_THREADS
 #define _Atomic
@@ -177,3 +174,22 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
     PROM_FORMAT_GAUGE_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
 	{ 0.0, GAUGE, #NAME, HELP, NULL, PROM_FORMAT_GAUGE_FN_NAME(NAME) }
+
+////////////////////////////////////////////////////////////////
+// public interface:
+
+extern const char *prom_namespace;	// must include trailing '_'
+
+extern int prom_process_init(void);	// call to load process exporter
+extern int prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who);
+extern int prom_format_vars(PROM_FILE *f);
+
+// helpers for formatters:
+extern int prom_format_start(PROM_FILE *f, int *state, struct prom_var *pvp);
+extern int prom_format_label(PROM_FILE *f, int *state, const char *name,
+			     const char *format, ...)
+    __attribute__ ((__format__ (__printf__, 4, 5)));
+extern int prom_format_value(PROM_FILE *f, int *state, const char *format, ...)
+    __attribute__ ((__format__ (__printf__, 3, 4)));
+extern int prom_format_value_ll(PROM_FILE *f, int *state, long long value);
+extern int prom_format_value_dbl(PROM_FILE *f, int *state, double value);

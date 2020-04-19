@@ -44,8 +44,10 @@
 ////////////////
 
 // one time constants:
-static long tix;			/* ticks per second */
 static long pagesize;			/* bytes/page */
+#ifndef USE_GETRUSAGE
+static long tix;			/* ticks per second */
+#endif
 
 // data from /proc/PID/stat
 // from proc(5) man page
@@ -118,7 +120,9 @@ _read_proc(void) {
 
     if (!pagesize) {		/* once only */
 	snprintf(proc_stat_file, sizeof(proc_stat_file), "/proc/%d/stat", getpid());
+#ifndef USE_GETRUSAGE
 	tix = sysconf(_SC_CLK_TCK);
+#endif
 	pagesize = sysconf(_SC_PAGESIZE);
     }
 
@@ -161,11 +165,13 @@ read_proc(void) {
 ////////////////////////////////////////////////////////////////
 // implement variables
 
+#ifndef USE_GETRUSAGE
 PROM_GETTER_COUNTER(process_cpu_seconds_total,
 		    "Total user and system CPU time spent in seconds");
 
 PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
     (void) pvp;
+
     if (read_proc() < 0)
 	return 0;
 
@@ -173,6 +179,7 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
     return (((double)proc_stat.utime)/tix +
 	    ((double)proc_stat.stime)/tix);
 }
+#endif
 
 ////////////////
 PROM_GETTER_GAUGE(process_virtual_memory_bytes,

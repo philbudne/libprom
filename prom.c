@@ -25,6 +25,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <stdarg.h>
+
 #include "prom.h"
 
 #ifdef __APPLE__
@@ -47,35 +49,103 @@ extern struct prom_var START_PROM_SECTION[1], STOP_PROM_SECTION[1];
 
 // globals
 time_t prom_now;
+const char *prom_namespace = "";	// must include trailing '_'
+
+int
+prom_format_start(PROM_FILE *f, int *state, struct prom_var *pvp) {
+    *state = 0;
+    PROM_PUTS(prom_namespace, f);
+    return PROM_PUTS(pvp->name, f);
+}
+
+int
+prom_format_label(PROM_FILE *f, int *state, const char *name,
+		  const char *format, ...) {
+    va_list ap;
+    char temp[32];
+
+    va_start(ap, format);
+    vsnprintf(temp, sizeof(temp), format, ap);
+    va_end(ap);
+
+    if (!*state) {
+	PROM_PUTC('{', f);
+	*state = 1;
+    }
+    else
+	PROM_PUTC(',', f);
+
+    PROM_PUTS(name, f);
+    PROM_PUTC('=', f);
+    PROM_PUTC('"', f);
+    PROM_PUTS(temp, f);
+    PROM_PUTC('"', f);
+
+    return 0;				/* XXX */
+}
+
+int
+prom_format_value(PROM_FILE *f, int *state, const char *format, ...) {
+    va_list ap;
+    char temp[32];
+
+    va_start(ap, format);
+    vsnprintf(temp, sizeof(temp), format, ap);
+    va_end(ap);
+
+    if (*state)
+	PROM_PUTC('}', f);
+    PROM_PUTC(' ', f);
+    PROM_PUTS(temp, f);
+    PROM_PUTC('\n', f);
+    // XXX wack state??
+
+    return 0;				/* XXX */
+}
+
+int
+prom_format_value_ll(PROM_FILE *f, int *state, long long value) {
+    return prom_format_value(f, state, "%lld", value);
+}
+
+int
+prom_format_value_dbl(PROM_FILE *f, int *state, double value) {
+    // not enough digits to print 2^63 (64-bit +inf)
+    // but avoids printing too many digits for microseconds???
+    return prom_format_value(f, state, "%.15g", value);
+}
 
 // prom_var.format for a simple variable
 // avoid casting to double and f.p. formatting
 // returns negative on failure
 int
 prom_format_simple(PROM_FILE *f, struct prom_var *pvp) {
-    return PROM_PRINTF(f, "%s %lld\n", pvp->name, pvp->value);
+    int state;
+
+    prom_format_start(f, &state, pvp);
+    return prom_format_value_ll(f, &state, pvp->value);
 }
 
 // prom_var.format for a "getter" variable
 // returns negative on failure
 int
 prom_format_getter(PROM_FILE *f, struct prom_var *pvp) {
-    // not enough digits to print 2^63 (64-bit +inf)
-    // but avoids printing too many digits for microseconds???
-    return PROM_PRINTF(f, "%s %.15g\n", pvp->name, pvp->getter(pvp));
+    int state;
+    prom_format_start(f, &state, pvp);
+    return prom_format_value_dbl(f, &state, pvp->getter(pvp));
 }
 
 static int
 prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     switch (pvp->type) {
     case GAUGE:
-	PROM_PRINTF(f, "# TYPE %s gauge\n", pvp->name);
+	PROM_PRINTF(f, "# TYPE %s%s gauge\n", prom_namespace, pvp->name);
 	break;
     case COUNTER:
-	PROM_PRINTF(f, "# TYPE %s counter\n", pvp->name);
+	PROM_PRINTF(f, "# TYPE %s%s counter\n", prom_namespace, pvp->name);
 	break;
     }
-    PROM_PRINTF(f, "# HELP %s %s.\n", pvp->name, pvp->help);
+    PROM_PRINTF(f, "# HELP %s%s %s.\n", prom_namespace, pvp->name, pvp->help);
     return (pvp->format)(f, pvp);
 }
 

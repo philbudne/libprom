@@ -31,7 +31,6 @@
  */
 
 #include <sys/types.h>			/* pid_t */
-#include <sys/resource.h>		/* getrlimit, getrusage */
 
 #include <mach/task.h>
 #include <mach/mach_init.h>
@@ -49,7 +48,6 @@ static double rss, vsz, seconds;
 
 static int
 _read_proc(void) {
-    struct rusage ru;
     static task_t task;
     static time_t last_proc;
     mach_task_basic_info_data_t mtbi;
@@ -70,11 +68,6 @@ _read_proc(void) {
     rss = mtbi.resident_size;
     vsz = mtbi.virtual_size;
 
-    if (getrusage(RUSAGE_SELF, &ru) < 0)
-	return -1;
-    seconds = ((ru.ru_utime.tv_sec  + ru.ru_stime.tv_sec) +
-	       (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1000000.0);
-
     last_proc = prom_now;
     return 0;
 }
@@ -93,18 +86,6 @@ read_proc(void) {
 ////////////////////////////////////////////////////////////////
 // implement variables
 
-PROM_GETTER_COUNTER(process_cpu_seconds_total,
-		    "Total user and system CPU time spent in seconds");
-
-PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-
-    return seconds;
-}
-
-////////////////
 PROM_GETTER_GAUGE(process_virtual_memory_bytes,
 		  "Virtual memory size in bytes");
 

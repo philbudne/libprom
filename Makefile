@@ -11,6 +11,8 @@ LIBOBJS=prom.o prom_http.o prom_process.o
 
 ifeq ($(OS), Linux)
 LIBOBJS += prom_process_linux.o
+# optional (better resolution); set to zero to disable
+USE_GETRUSAGE = 1
 endif
 
 ifeq ($(OS), FreeBSD)
@@ -19,6 +21,11 @@ endif
 
 ifeq ($(OS), Darwin)
 LIBOBJS += prom_process_osx.o
+USE_GETRUSAGE = 1
+endif
+
+ifeq ($(USE_GETRUSAGE), 1)
+CFLAGS += -DUSE_GETRUSAGE
 endif
 
 $(LIBOBJS): prom.h
