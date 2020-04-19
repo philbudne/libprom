@@ -40,28 +40,11 @@
 #include <time.h>			/* time(), time_t */
 #include <unistd.h>			/* getpid() */
 
-#ifndef NO_THREADS
-#include <pthread.h>
-
-#define MUTEX_INIT PTHREAD_MUTEX_INITIALIZER
-
-#define DECLARE_LOCK(NAME) \
-    static pthread_mutex_t NAME = MUTEX_INIT;
-
-#define LOCK(NAME) pthread_mutex_lock(&NAME)
-#define UNLOCK(NAME) pthread_mutex_unlock(&NAME)
-
-#else
-#define DECLARE_LOCK(NAME)
-#define LOCK(NAME)
-#define UNLOCK(NAME)
-#endif
-
 #include "prom.h"
+#include "common.h"
 
 ////////////////
 
-static struct rlimit maxvsz;
 static double rss, vsz, seconds;
 
 static int
@@ -79,7 +62,6 @@ _read_proc(void) {
     if (!maxfds.rlim_cur) {
 	if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
 	    return -1;
-	getrlimit(RLIMIT_AS, &maxvsz);
     }
 
     // thanks to miknight.blogspot.com/2005/11/resident-set-size-in-mac-os-x.html for a start!
@@ -132,17 +114,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
     if (read_proc() < 0)
 	return 0.0;
     return vsz;
-}
-
-////////////////
-PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
-		  "Maximum amount of virtual memory available in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
-    (void) pvp;
-    if (read_proc() < 0)
-	return 0.0;
-    return maxvsz.rlim_cur;
 }
 
 ////////////////

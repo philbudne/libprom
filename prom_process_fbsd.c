@@ -117,20 +117,6 @@ PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
-		  "Maximum amount of virtual memory available in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
-    static struct rlimit maxvsz;
-
-    (void) pvp;
-    if (!maxvsz.rlim_cur)
-	getrlimit(RLIMIT_AS, &maxvsz);
-
-    return maxvsz.rlim_cur;
-}
-
-////////////////
 PROM_GETTER_GAUGE(process_resident_memory_bytes,
 		  "Resident memory size in bytes");
 

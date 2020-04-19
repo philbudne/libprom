@@ -79,6 +79,22 @@ PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
 }
 
 ////////////////
+#ifndef __Linux__
+// less useful on LP64 systems than on ILP32
+PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
+		  "Maximum amount of virtual memory available in bytes");
+
+PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
+    static struct rlimit maxvsz;
+
+    (void) pvp;
+    if (!maxvsz.rlim_cur)
+	getrlimit(RLIMIT_AS, &maxvsz);
+
+    return maxvsz.rlim_cur;
+}
+#endif
+////////////////
 
 int
 prom_process_common_init(void) {
