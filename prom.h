@@ -86,7 +86,6 @@ int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_SECTION_PREFIX
 #endif
 
-// OSX, ISTR wants something different
 #define PROM_SECTION_ATTR __attribute__((section (PROM_SECTION_PREFIX PROM_SECTION_STR)))
 
 ////////////////////////////////////////////////////////////////
