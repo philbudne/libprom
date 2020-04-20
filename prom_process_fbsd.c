@@ -46,6 +46,7 @@
 static double rss, vsz, seconds;
 static int threads;
 static int pagesize;
+static time_t last_proc;
 
 // helper, called under lock
 static int
@@ -53,7 +54,6 @@ _read_proc(void) {
     size_t length;
     struct kinfo_proc ki;
     static int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
-    static time_t last_proc;
 
     if (!STALE(last_proc))
 	return 0;
@@ -85,6 +85,8 @@ read_proc(void) {
     DECLARE_LOCK(read_proc_lock);
     int ret;
 
+    if (!STALE(last_proc))
+	return 0;
     LOCK(read_proc_lock);
     ret = _read_proc();
     UNLOCK(read_proc_lock);

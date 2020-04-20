@@ -44,12 +44,12 @@
 
 ////////////////
 
-static double rss, vsz, seconds;
+static double rss, vsz;
+static time_t last_proc;
 
 static int
 _read_proc(void) {
     static task_t task;
-    static time_t last_proc;
     mach_task_basic_info_data_t mtbi;
     mach_msg_type_number_t mtbic;
     
@@ -76,6 +76,9 @@ static int
 read_proc(void) {
     int ret;
     DECLARE_LOCK(read_proc_lock);
+
+    if (!STALE(last_proc))
+	return 0;
 
     LOCK(read_proc_lock);
     ret = _read_proc();

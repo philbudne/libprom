@@ -38,10 +38,9 @@ PROM_GETTER_GAUGE(process_open_fds,
 
 PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
     DIR *d;
-    static time_t last_fds;
     static unsigned fds;
     DECLARE_LOCK(fds_lock);
-
+    static time_t last_fds;
 
     LOCK(fds_lock);
     if (STALE(last_fds) &&

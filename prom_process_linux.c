@@ -108,11 +108,12 @@ static const char nvars[] = {
 };
 #define NUM_PROC_STAT sizeof(nvars)
 
+static time_t last_proc;
+
 static int
 _read_proc(void) {
     FILE *f;
     unsigned n;
-    static time_t last_proc;
     static char proc_stat_file[32];
 
     if (!STALE(last_proc))
@@ -156,6 +157,8 @@ read_proc(void) {
     DECLARE_LOCK(read_proc_lock);
     int ret;
 
+    if (!STALE(last_proc))
+	return 0;
     LOCK(read_proc_lock);
     ret = _read_proc();
     UNLOCK(read_proc_lock);
