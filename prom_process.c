@@ -11,25 +11,16 @@
 #include "prom.h"
 #include "common.h"
 
-static void get_start_time(void) __attribute((constructor));
-
-static double start;
-
-// runs as a constructor:
-static void
-get_start_time(void) {
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-    start = tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
 ////////////////
-PROM_GETTER_GAUGE(process_start_time_seconds,
+PROM_SIMPLE_GAUGE(process_start_time_seconds,
 		  "Start time of the process in seconds since Unix epoch");
 
-PROM_GETTER_GAUGE_FN_PROTO(process_start_time_seconds) {
-    return start;
+// run as a constructor:
+static void get_start_time(void) __attribute((constructor));
+
+static void
+get_start_time(void) {
+    PROM_SIMPLE_GAUGE_SET(process_start_time_seconds, time(0));
 }
 
 ////////////////

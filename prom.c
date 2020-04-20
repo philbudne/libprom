@@ -145,11 +145,9 @@ prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     case COUNTER:
 	PROM_PRINTF(f, "# TYPE %s%s counter\n", prom_namespace, pvp->name);
 	break;
-#ifdef PROM_HISTOGRAMS
     case HISTOGRAM:
 	PROM_PRINTF(f, "# TYPE %s%s histogram\n", prom_namespace, pvp->name);
 	break;
-#endif
     }
     PROM_PRINTF(f, "# HELP %s%s %s.\n", prom_namespace, pvp->name, pvp->help);
     return (pvp->format)(f, pvp);
@@ -175,10 +173,10 @@ prom_format_vars(PROM_FILE *f) {
     struct prom_var *pvp;
 
     time(&prom_now);
-    pvp = START_PROM_SECTION;
-    while (pvp < STOP_PROM_SECTION) {
+    for (pvp = START_PROM_SECTION;
+	 pvp < STOP_PROM_SECTION;
+	 pvp = ((void *)pvp) + pvp->size) {
 	prom_format_one(f, pvp);	// XXX check return?
-	pvp = ((void *)pvp) + pvp->size;
     }
     return 0;
 }

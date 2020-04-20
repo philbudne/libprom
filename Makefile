@@ -2,14 +2,12 @@
 
 OS := $(shell uname)
 
-HISTOGRAMS = 1
-
 CFLAGS=-O -g -Wextra -Wall -Wmissing-prototypes -I.
 
 ALL=libprom.a test_http
 all:	$(ALL)
 
-LIBOBJS=prom.o prom_http.o prom_process.o
+LIBOBJS=prom.o prom_http.o prom_process.o prom_histogram.o
 
 ifeq ($(OS), Linux)
 LIBOBJS += prom_process_linux.o
@@ -28,11 +26,6 @@ endif
 
 ifeq ($(USE_GETRUSAGE), 1)
 CFLAGS += -DUSE_GETRUSAGE
-endif
-
-ifneq ($(HISTOGRAMS), 0)
-LIBOBJS += prom_histogram.o
-CFLAGS += -DPROM_HISTOGRAMS
 endif
 
 $(LIBOBJS): prom.h

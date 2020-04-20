@@ -51,9 +51,7 @@ typedef _Atomic long long prom_value;
 enum prom_var_type {
     GAUGE,
     COUNTER,
-#ifdef PROM_HISTOGRAMS
     HISTOGRAM
-#endif
 };
 
 #ifdef __LP64__
@@ -72,7 +70,7 @@ struct prom_var {
 
 struct prom_simple_var {
     struct prom_var base;
-    prom_value value;		// for simple vars
+    prom_value value;
 } PROM_ALIGN;
 
 struct prom_getter_var {
@@ -82,7 +80,7 @@ struct prom_getter_var {
 
 struct prom_hist_var {
     struct prom_var base;
-    int nbins;
+    int nbins;			// not including +inf
     const double *limits;
     prom_value *bins;
     double sum;			// XXX need lock?
@@ -110,7 +108,8 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_SECTION_PREFIX
 #endif
 
-#define PROM_SECTION_ATTR __attribute__((section (PROM_SECTION_PREFIX PROM_SECTION_STR)))
+#define PROM_SECTION_ATTR \
+    __attribute__((section (PROM_SECTION_PREFIX PROM_SECTION_STR)))
 
 ////////////////////////////////////////////////////////////////
 // COUNTERs:
@@ -128,8 +127,11 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_FORMAT_COUNTER_FN_NAME(NAME) NAME##_format
 
 // use to create functions!!
-#define PROM_GETTER_COUNTER_FN_PROTO(NAME) static double PROM_GETTER_COUNTER_FN_NAME(NAME)(void)
-#define PROM_FORMAT_COUNTER_FN_PROTO(NAME) static int PROM_FORMAT_COUNTER_FN_NAME(NAME)(PROM_FILE *f, struct prom_var *pvp)
+#define PROM_GETTER_COUNTER_FN_PROTO(NAME) \
+    static double PROM_GETTER_COUNTER_FN_NAME(NAME)(void)
+#define PROM_FORMAT_COUNTER_FN_PROTO(NAME) \
+    static int PROM_FORMAT_COUNTER_FN_NAME(NAME)(PROM_FILE *f, \
+						 struct prom_var *pvp)
 
 ////////////////
 // declare a simple counter
@@ -146,7 +148,7 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 // declare counter with function to fetch (non-decreasing) value
 #define PROM_GETTER_COUNTER(NAME,HELP) \
     PROM_GETTER_COUNTER_FN_PROTO(NAME); \
-    struct prom_getter_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR =	\
+    struct prom_getter_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_getter_var), COUNTER, #NAME, HELP, \
 	  prom_format_getter }, PROM_GETTER_COUNTER_FN_NAME(NAME) }
 
@@ -174,20 +176,23 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_GETTER_GAUGE_FN_NAME(NAME) NAME##_getter
 #define PROM_FORMAT_GAUGE_FN_NAME(NAME) NAME##_format
 
-#define PROM_GETTER_GAUGE_FN_PROTO(NAME) static double PROM_GETTER_GAUGE_FN_NAME(NAME)(void)
-#define PROM_FORMAT_GAUGE_FN_PROTO(NAME) static int PROM_FORMAT_GAUGE_FN_NAME(NAME)(PROM_FILE *f, struct prom_var *pvp)
+#define PROM_GETTER_GAUGE_FN_PROTO(NAME) \
+    static double PROM_GETTER_GAUGE_FN_NAME(NAME)(void)
+#define PROM_FORMAT_GAUGE_FN_PROTO(NAME) \
+    static int PROM_FORMAT_GAUGE_FN_NAME(NAME)(PROM_FILE *f, \
+					       struct prom_var *pvp)
 
 ////////////////
 // declare a simple gauge
 #define PROM_SIMPLE_GAUGE(NAME,HELP) \
     struct prom_simple_var _PROM_SIMPLE_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
-	{ sizeof(prom_simple_var), GAUGE, \
-	  #NAME, HELP, NULL, prom_format_simple, 0.0 }
+	{ { sizeof(struct prom_simple_var), GAUGE, \
+	    #NAME,HELP, prom_format_simple}, 0 }
 
 // ONLY work on "simple" gauges
 #define PROM_SIMPLE_GAUGE_INC(NAME) _PROM_SIMPLE_GAUGE_NAME(NAME).value++
 #define PROM_SIMPLE_GAUGE_INC_BY(NAME,BY) _PROM_SIMPLE_GAUGE_NAME(NAME).value += BY
-#define PROM_SIMPLE_GAUGE_SET(NAME, VAL) _PROM_SIMPLE_GAUGE_NAME(NAME) = VAL
+#define PROM_SIMPLE_GAUGE_SET(NAME, VAL) _PROM_SIMPLE_GAUGE_NAME(NAME).value = VAL
 
 ////////////////
 // declare gauge with functio to fetch (non-decreasing) value
