@@ -90,11 +90,12 @@ prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
 
     code200++;
     if (strcmp(path, "/metrics") == 0) {
+	// XXX include version=0.0.4?
 	if (proto[0])
 	    PROM_PRINTF(out, "Content-Type: text/plain; charset=utf-8\r\n\r\n");
 
 	// XXX if Content-Length: becomess necessary,
-	// by providing/requiring a prom_fmemopen function??
+	// handle by providing/requiring a prom_fmemopen function??
 	prom_format_vars(out);
     }
     else {
