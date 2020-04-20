@@ -54,11 +54,9 @@ enum prom_var_type {
     HISTOGRAM
 };
 
-#ifdef __LP64__
-#define PROM_ALIGN __attribute__((aligned(64)))
-#else
-#define PROM_ALIGN
-#endif
+// empirical: works on both x86 and x86-64
+// (look at doing fudgery when iterating?)
+#define PROM_ALIGN __attribute__((aligned(32)))
 
 struct prom_var {
     int size;
