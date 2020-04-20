@@ -47,6 +47,12 @@
 extern struct prom_var START_PROM_SECTION[1], STOP_PROM_SECTION[1];
 #endif // not __APPLE__
 
+// could do alignment fudgery here?
+#define FOREACH_PROM_VAR(PVP) \
+    for (PVP = START_PROM_SECTION; \
+	 PVP < STOP_PROM_SECTION; \
+	 PVP = ((void *)PVP) + PVP->size)
+
 // globals
 time_t prom_now;
 const char *prom_namespace = "";	// must include trailing '_'
@@ -173,9 +179,7 @@ prom_format_vars(PROM_FILE *f) {
     struct prom_var *pvp;
 
     time(&prom_now);
-    for (pvp = START_PROM_SECTION;
-	 pvp < STOP_PROM_SECTION;
-	 pvp = ((void *)pvp) + pvp->size) {
+    FOREACH_PROM_VAR(pvp) {
 	prom_format_one(f, pvp);	// XXX check return?
     }
     return 0;
