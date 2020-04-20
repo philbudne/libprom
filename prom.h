@@ -42,6 +42,7 @@
 #define _Atomic
 #endif
 
+// performs locked increment
 // atomic double is just too gruesome
 typedef _Atomic long long prom_value;
 
@@ -243,7 +244,7 @@ extern int prom_format_label(PROM_FILE *f, int *state, const char *name,
     __attribute__ ((__format__ (__printf__, 4, 5)));
 extern int prom_format_value(PROM_FILE *f, int *state, const char *format, ...)
     __attribute__ ((__format__ (__printf__, 3, 4)));
-extern int prom_format_value_ll(PROM_FILE *f, int *state, long long value);
+extern int prom_format_value_pv(PROM_FILE *f, int *state, prom_value value);
 extern int prom_format_value_dbl(PROM_FILE *f, int *state, double value);
 
 #ifndef PROM_DOUBLE_FORMAT

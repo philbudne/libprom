@@ -104,7 +104,7 @@ prom_format_value(PROM_FILE *f, int *state, const char *format, ...) {
 }
 
 int
-prom_format_value_ll(PROM_FILE *f, int *state, long long value) {
+prom_format_value_pv(PROM_FILE *f, int *state, prom_value value) {
     return prom_format_value(f, state, "%lld", value);
 }
 
@@ -122,7 +122,7 @@ prom_format_simple(PROM_FILE *f, struct prom_var *pvp) {
     struct prom_simple_var *psvp = (struct prom_simple_var *)pvp;
 
     prom_format_start(f, &state, pvp);
-    return prom_format_value_ll(f, &state, psvp->value);
+    return prom_format_value_pv(f, &state, psvp->value);
 }
 
 // prom_var.format for a "getter" variable

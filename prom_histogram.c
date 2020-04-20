@@ -69,12 +69,12 @@ prom_format_histogram(PROM_FILE *f, struct prom_var *pvp) {
 	prom_format_start(f, &state, pvp);
 	PROM_PUTS("_bucket", f);
 	prom_format_label(f, &state, "le", "%.15g", phvp->limits[i]);
-	prom_format_value_ll(f, &state, phvp->bins[i]);
+	prom_format_value_pv(f, &state, phvp->bins[i]);
     }
     prom_format_start(f, &state, pvp);
     PROM_PUTS("_bucket", f);
     prom_format_label(f, &state, "le", "+Inf");
-    prom_format_value_ll(f, &state, phvp->bins[i]);
+    prom_format_value_pv(f, &state, phvp->bins[i]);
 
     prom_format_start(f, &state, pvp);
     PROM_PUTS("_sum", f);
@@ -82,6 +82,6 @@ prom_format_histogram(PROM_FILE *f, struct prom_var *pvp) {
 
     prom_format_start(f, &state, pvp);
     PROM_PUTS("_count", f);
-    prom_format_value_ll(f, &state, phvp->bins[i]);
+    prom_format_value_pv(f, &state, phvp->bins[i]);
     return 0;				/* XXX */
 }
