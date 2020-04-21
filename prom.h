@@ -39,12 +39,34 @@
 #endif
 
 #ifdef NO_THREADS
-#define _Atomic
-#endif
+
+typedef long long prom_value;
+#define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
+
+#elif defined(USE_SYNC_ADD)
+
+// works with gcc 4.1.2
+typedef long long prom_value;
+#define PROM_ATOMIC_INCREMENT(VAR, BY) \
+    (void) __sync_add_and_fetch(&VAR, BY)
+
+#else
+
+#include <stdatomic.h>			// C11
+// available in glibc 2.28 (Ubuntu 18.10), FreeBSD 12, macOS Catalina
 
 // performs locked increment
 // atomic double is just too gruesome
-typedef _Atomic long long prom_value;
+typedef atomic_llong prom_value;
+#define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
+
+// atomic_fetch_add_explicit(&atomic_counter, 1, memory_order_relaxed)
+// on plain variable may suffice.
+
+// _could_ make do with gcc 6.4:
+// __atomic_fetch_add(&var, 1, __ATOMIC_SEQ_CST) ??
+
+#endif
 
 ////////////////
 
@@ -79,8 +101,9 @@ struct prom_getter_var {
 struct prom_hist_var {
     struct prom_var base;
     int nbins;			// not including +inf
-    const double *limits;
+    double *limits;		// double[nbins]
     prom_value *bins;
+    prom_value count;		// also +Inf bin
     double sum;			// XXX need lock?
 } PROM_ALIGN;
 
@@ -139,8 +162,11 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 	  #NAME, HELP, prom_format_simple }, 0 }
 
 // ONLY work on "simple" counters
-#define PROM_SIMPLE_COUNTER_INC(NAME) _PROM_SIMPLE_COUNTER_NAME(NAME).value++
-#define PROM_SIMPLE_COUNTER_INC_BY(NAME,BY) _PROM_SIMPLE_COUNTER_NAME(NAME).value += BY
+#define PROM_SIMPLE_COUNTER_INC(NAME) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_COUNTER_NAME(NAME).value, 1)
+
+#define PROM_SIMPLE_COUNTER_INC_BY(NAME,BY) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_COUNTER_NAME(NAME).value, BY)
 
 ////////////////
 // declare counter with function to fetch (non-decreasing) value
@@ -188,8 +214,12 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 	    #NAME,HELP, prom_format_simple}, 0 }
 
 // ONLY work on "simple" gauges
-#define PROM_SIMPLE_GAUGE_INC(NAME) _PROM_SIMPLE_GAUGE_NAME(NAME).value++
-#define PROM_SIMPLE_GAUGE_INC_BY(NAME,BY) _PROM_SIMPLE_GAUGE_NAME(NAME).value += BY
+#define PROM_SIMPLE_GAUGE_INC(NAME) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_NAME(NAME).value, 1)
+
+#define PROM_SIMPLE_GAUGE_INC_BY(NAME,BY) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_NAME(NAME).value, BY)
+
 #define PROM_SIMPLE_GAUGE_SET(NAME, VAL) _PROM_SIMPLE_GAUGE_NAME(NAME).value = VAL
 
 ////////////////
@@ -218,14 +248,14 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
     struct prom_hist_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
 	{ {sizeof(struct prom_hist_var), HISTOGRAM, \
 	   #NAME, HELP, prom_format_histogram }, \
-	  sizeof(LIMITS)/sizeof(LIMITS[0]), LIMITS, NULL, 0.0 }
+	  sizeof(LIMITS)/sizeof(LIMITS[0]), LIMITS, NULL, 0, 0.0 }
 
 // histogram with default limits
 #define PROM_HISTOGRAM(NAME,HELP) \
     struct prom_hist_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_hist_var), HISTOGRAM, \
 	  #NAME, HELP, prom_format_histogram }, \
-	  0, NULL, NULL, 0.0 }
+	  0, NULL, NULL, 0, 0.0 }
 
 extern int prom_histogram_observe(struct prom_hist_var *, double value);
 #define PROM_HISTOGRAM_OBSERVE(NAME,VALUE) \

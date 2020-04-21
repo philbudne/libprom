@@ -2,8 +2,8 @@
 
 PROM_HISTOGRAM(my_histogram, "Histogram of observations");
 
-const double limits[] = { 0.5, 1, 2.5, 5, 10, 20 };
-PROM_HISTOGRAM_CUSTOM(my_custom, "Histogram of observations", limits);
+static double limits[] = { 0.5, 1, 2.5, 5, 10, 20 };
+PROM_HISTOGRAM_CUSTOM(my_custom, "Histogram of observations with custom bins", limits);
 
 int
 main() {
