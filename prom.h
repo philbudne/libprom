@@ -280,6 +280,12 @@ extern int prom_format_value(PROM_FILE *f, int *state, const char *format, ...)
 extern int prom_format_value_pv(PROM_FILE *f, int *state, prom_value value);
 extern int prom_format_value_dbl(PROM_FILE *f, int *state, double value);
 
+// network helpers
+int prom_listen(int port, int family, int nonblock);
+void prom_accept(int s);
+int prom_dispatch(int s);
+int prom_pool_init(int threads, const char *name);
+
 #ifndef PROM_DOUBLE_FORMAT
 // not enough digits to print 2^63 (64-bit +inf)
 // but avoids printing too many digits for microseconds???

@@ -11,7 +11,8 @@ all:	$(ALL)
 
 test_progs: $(TESTS)
 
-LIBOBJS=prom.o prom_http.o prom_process.o prom_histogram.o
+LIBOBJS=prom.o prom_http.o prom_process.o prom_histogram.o \
+	prom_listen.o prom_accept.o prom_dispatch.o 
 
 ifeq ($(OS), Linux)
 LIBOBJS += prom_process_linux.o
