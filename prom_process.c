@@ -2,6 +2,7 @@
 // 2020-04-18
 //
 // prometheus process vars common on Un*xy systems
+// (FreeBSD, macOS, Linux)
 
 #include <sys/time.h>			/* gettimeofday */
 #include <sys/resource.h>		/* getrlimit */
@@ -12,6 +13,7 @@
 #include "common.h"
 
 ////////////////
+// a gauge in all implementations I've looked at:
 PROM_SIMPLE_GAUGE(process_start_time_seconds,
 		  "Start time of the process in seconds since Unix epoch");
 
@@ -20,6 +22,8 @@ static void get_start_time(void) __attribute((constructor));
 
 static void
 get_start_time(void) {
+    // "SIMPLE" variables are integer-only
+    // so no point in calling gettimeofday()
     PROM_SIMPLE_GAUGE_SET(process_start_time_seconds, time(0));
 }
 
