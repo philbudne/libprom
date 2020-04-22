@@ -1,4 +1,4 @@
-// dispatch requests using thread pool
+// simple/sample request dispatch using pthread pool
 // Phil Budne 2020-04-21
 
 /*-
@@ -56,23 +56,29 @@ prom_pool_worker(void *arg) {
     (void) arg;
     for (;;) {
 	int fd;
+	FILE *f;
 
 	pthread_mutex_lock(&pool_lock);
-	pthread_cond_wait(&pool_cv, &pool_lock);
-	// break if cond_wait returned non-zero?
-	if (!QEMPTY) {
+	if (QEMPTY)
+	    pthread_cond_wait(&pool_cv, &pool_lock);
+	// return if cond_wait returned non-zero?
+	//printf("awake %#lx\n", pthread_self());
+	if (QEMPTY) {
+	    //puts("empty");
+	    fd = -1;
+	}
+	else {
 	    fd = queue[qrd];
 	    qrd = NEXT(qrd);
 	}
-	else
-	    fd = -1;
 	pthread_mutex_unlock(&pool_lock);
 	if (fd < 0)
 	    continue;
-
+	//printf("fd %d\n", fd);
 	fcntl(fd, F_SETFD, 0);		/* clear nonblock */
-	FILE *f = fdopen(fd, "r+");
+	f = fdopen(fd, "r+");
 	prom_http_request(f, f, exporter_name);
+	//sleep(2);
 	fclose(f);
     }
     return NULL;
@@ -103,12 +109,14 @@ prom_dispatch(int s) {
 	return -1;
     pthread_mutex_lock(&pool_lock);
     if (!QFULL) {
+	//printf("queue %d\n", s);
 	queue[qwr] = s;
 	qwr = NEXT(qwr);
 	pthread_cond_signal(&pool_cv);
 	ret = 0;
     }
     else {
+	//puts("full");
 	close(s);
 	ret = -1;
     }
