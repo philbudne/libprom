@@ -138,8 +138,8 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 // mangle var NAME into struct name
 // for internal use only
 // users shouldn't touch prom_var innards
-// (prevent decrement of counters and
-// increment/set on non-simple vars)
+// (prevent decrement of counters and increment on non-simple vars)
+// *BUT* allows multiple declaration of same metric name with different types!
 #define _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SIMPLE_COUNTER_##NAME
 #define _PROM_GETTER_COUNTER_NAME(NAME) PROM_GETTER_COUNTER_##NAME
 #define _PROM_FORMAT_COUNTER_NAME(NAME) PROM_FORMAT_COUNTER_##NAME
@@ -191,7 +191,8 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 // mangle var NAME into struct name
 // for internal use only
 // users shouldn't touch prom_var innards
-// (prevent increment/set on non-simple vars)
+// (prevent increment/set on non-simple vars, decrement on counter)
+// *BUT* allows multiple declaration of same metric name with different types!
 #define _PROM_SIMPLE_GAUGE_NAME(NAME) PROM_SIMPLE_GAUGE_##NAME
 #define _PROM_GETTER_GAUGE_NAME(NAME) PROM_GETTER_GAUGE_##NAME
 #define _PROM_FORMAT_GAUGE_NAME(NAME) PROM_FORMAT_GAUGE_##NAME
@@ -220,7 +221,11 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_SIMPLE_GAUGE_INC_BY(NAME,BY) \
     PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_NAME(NAME).value, BY)
 
-#define PROM_SIMPLE_GAUGE_SET(NAME, VAL) _PROM_SIMPLE_GAUGE_NAME(NAME).value = VAL
+#define PROM_SIMPLE_GAUGE_DEC(NAME) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_NAME(NAME).value, -1)
+
+#define PROM_SIMPLE_GAUGE_SET(NAME, VAL) \
+    _PROM_SIMPLE_GAUGE_NAME(NAME).value = VAL
 
 ////////////////
 // declare gauge with functio to fetch (non-decreasing) value
@@ -285,6 +290,8 @@ int prom_listen(int port, int family, int nonblock);
 void prom_accept(int s);
 int prom_dispatch(int s);
 int prom_pool_init(int threads, const char *name);
+void prom_http_interr(int s);
+void prom_http_unavail(int s);
 
 #ifndef PROM_DOUBLE_FORMAT
 // not enough digits to print 2^63 (64-bit +inf)

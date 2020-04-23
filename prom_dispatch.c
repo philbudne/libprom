@@ -34,9 +34,7 @@
 #include "prom.h"
 
 #define POOL_SIZE 3
-#define QUEUE_SIZE_SHIFT 5
-#define QUEUE_SIZE (1<<QUEUE_SIZE_SHIFT)
-#define QUEUE_SIZE_MASK ((1<<QUEUE_SIZE_SHIFT)-1)
+#define QUEUE_SIZE 8
 
 static int pool_size;
 static pthread_t *pool_threads;
@@ -47,7 +45,10 @@ static const char *exporter_name;
 static int qrd, qwr;
 static int queue[QUEUE_SIZE];
 
-#define NEXT(X) (((X)+1) & QUEUE_SIZE_MASK)
+PROM_SIMPLE_GAUGE(promhttp_metric_handler_requests_in_flight,
+		  "Current number of scrapes being served");
+
+#define NEXT(X) (((X)+1) % QUEUE_SIZE)
 #define QEMPTY (qrd == qwr)
 #define QFULL (NEXT(qwr) == qrd)
 
@@ -77,9 +78,16 @@ prom_pool_worker(void *arg) {
 	//printf("fd %d\n", fd);
 	fcntl(fd, F_SETFD, 0);		/* clear nonblock */
 	f = fdopen(fd, "r+");
-	prom_http_request(f, f, exporter_name);
-	//sleep(2);
-	fclose(f);
+	if (f) {
+	    sleep(1);
+	    prom_http_request(f, f, exporter_name);
+	    fclose(f);
+	}
+	else {
+	    prom_http_unavail(fd);
+	    close(fd);
+	}
+	PROM_SIMPLE_GAUGE_DEC(promhttp_metric_handler_requests_in_flight);
     }
     return NULL;
 }
@@ -110,12 +118,14 @@ prom_dispatch(int s) {
     pthread_mutex_lock(&pool_lock);
     if (!QFULL) {
 	//printf("queue %d\n", s);
+	PROM_SIMPLE_GAUGE_INC(promhttp_metric_handler_requests_in_flight);
 	queue[qwr] = s;
 	qwr = NEXT(qwr);
 	pthread_cond_signal(&pool_cv);
 	ret = 0;
     }
     else {
+	prom_http_unavail(s);
 	//puts("full");
 	close(s);
 	ret = -1;

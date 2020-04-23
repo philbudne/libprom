@@ -27,10 +27,11 @@
  */
 
 #include <string.h>
+#include <unistd.h>			/* write */
 
 #include "prom.h"
 
-static prom_value code200, code400;
+static prom_value code200, code400, code500, code503;
 
 PROM_FORMAT_COUNTER(promhttp_metric_handler_requests_total,
 		  "Total number of scrapes by HTTP status code");
@@ -47,9 +48,33 @@ PROM_FORMAT_COUNTER_FN_PROTO(promhttp_metric_handler_requests_total) {
 
     FMT_CODE(200);
     FMT_CODE(400);
+    FMT_CODE(500);
+    FMT_CODE(503);
 
     return 0;
 }
+
+// dodge to avoid complaints about unused result
+// (until the compilers get smarter)
+static int
+send_str(int fd, const char *str) {
+    return write(fd, str, strlen(str));
+}
+
+void
+prom_http_interr(int fd)
+{
+    send_str(fd, "HTTP/1.0 500 Internal Server Error\r\n");
+    code500++;
+}
+
+void
+prom_http_unavail(int fd)
+{
+    send_str(fd, "HTTP/1.0 503 Service Unavailable\r\n");
+    code503++;
+}
+#undef SEND
 
 int
 prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
@@ -113,3 +138,4 @@ prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
     // "Connection: close" is implied by HTTP/1.0 response
     return 0;
 }
+
