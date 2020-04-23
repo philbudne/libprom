@@ -7,7 +7,8 @@ PROM_HISTOGRAM_CUSTOM(my_custom, "Histogram of observations with custom bins", l
 
 int
 main() {
-    for (double v = 0.001; v <= 20.0; v *= 2) {
+    double v;
+    for (v = 0.001; v <= 20.0; v *= 2) {
 	printf(PROM_DOUBLE_FORMAT "\n", v);
 	PROM_HISTOGRAM_OBSERVE(my_histogram, v);
 	PROM_HISTOGRAM_OBSERVE(my_custom, v);
