@@ -125,7 +125,7 @@ prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
     }
     else {
 	if (proto[0])
-	    PROM_PRINTF(out, "Content-Type: text/html; charset=utf-8\r\n\r\n");
+	    PROM_PRINTF(out, "Content-Type: text/html; version=0.0.4; charset=utf-8\r\n\r\n");
 	PROM_PRINTF(out,
 		    "<html>\r\n"
 		    "<head><title>%s exporter</title></head>\r\n"
