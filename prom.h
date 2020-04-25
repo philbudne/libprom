@@ -25,11 +25,6 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __cplusplus
-// NOTE!  Requires g++ -std=c++17
-extern "C" {
-#endif
-
 #include <time.h>
 
 #ifndef PROM_FILE
@@ -78,6 +73,10 @@ typedef long long prom_value;
 #endif // not C11
 
 ////////////////
+#ifdef __cplusplus
+// NOTE!  Requires g++ -std=c++17
+extern "C" {
+#endif
 
 enum prom_var_type {
     GAUGE,
