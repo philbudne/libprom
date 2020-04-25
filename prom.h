@@ -47,28 +47,23 @@ extern "C" {
 typedef long long prom_value;
 #define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
-#elif defined(USE_SYNC_ADD)
-
-// works with gcc 4.1.2
-typedef long long prom_value;
-#define PROM_ATOMIC_INCREMENT(VAR, BY) \
-    (void) __sync_add_and_fetch(&VAR, BY)
-
-#else  // not USE_SYNC_ADD
+#elif __STDC_VERSION__ >= 201112L || __cplusplus >= 201103L
 
 #ifdef __cplusplus
 
 #include <atomic>
 typedef std::atomic<long long> prom_value;
 
-#else // not __cplusplus
+#else  // not __cplusplus
 
-#include <stdatomic.h>			// C11
+// not available if __STDC_NO_ATOMICS__ defined
+// support in gcc 4.6, clang 3.1
 // available in glibc 2.28 (Ubuntu 18.10), FreeBSD 12, macOS Catalina
-
-// performs locked increment
-// atomic double is just too gruesome
+#include <stdatomic.h>			// C11 (optional feature)
 typedef atomic_llong prom_value;
+
+#endif // not __cplusplus
+
 #define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
 // atomic_fetch_add_explicit(&atomic_counter, 1, memory_order_relaxed)
@@ -77,7 +72,14 @@ typedef atomic_llong prom_value;
 // _could_ make do with gcc 6.4:
 // __atomic_fetch_add(&var, 1, __ATOMIC_SEQ_CST) ??
 
-#endif // not USE_SYNC_ADD
+#else // not C11
+
+// works with gcc 4.1.2
+typedef long long prom_value;
+#define PROM_ATOMIC_INCREMENT(VAR, BY) \
+    (void) __sync_add_and_fetch(&VAR, BY)
+
+#endif // not C11
 
 ////////////////
 
