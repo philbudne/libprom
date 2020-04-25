@@ -25,6 +25,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef __cplusplus
+// NOTE!  Requires g++ -std=c++17
+extern "C" {
+#endif
 
 #include <time.h>
 
@@ -50,7 +54,14 @@ typedef long long prom_value;
 #define PROM_ATOMIC_INCREMENT(VAR, BY) \
     (void) __sync_add_and_fetch(&VAR, BY)
 
-#else
+#else  // not USE_SYNC_ADD
+
+#ifdef __cplusplus
+
+#include <atomic>
+typedef std::atomic<long long> prom_value;
+
+#else // not __cplusplus
 
 #include <stdatomic.h>			// C11
 // available in glibc 2.28 (Ubuntu 18.10), FreeBSD 12, macOS Catalina
@@ -66,7 +77,7 @@ typedef atomic_llong prom_value;
 // _could_ make do with gcc 6.4:
 // __atomic_fetch_add(&var, 1, __ATOMIC_SEQ_CST) ??
 
-#endif
+#endif // not USE_SYNC_ADD
 
 ////////////////
 
@@ -297,4 +308,8 @@ void prom_http_unavail(int s);
 // not enough digits to print 2^63 (64-bit +inf)
 // but avoids printing too many digits for microseconds???
 #define PROM_DOUBLE_FORMAT "%.15g"
+#endif
+
+#ifdef __cplusplus
+} // extern "C"
 #endif
