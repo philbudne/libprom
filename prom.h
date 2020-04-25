@@ -47,23 +47,19 @@ extern "C" {
 typedef long long prom_value;
 #define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
-#elif __STDC_VERSION__ >= 201112L || __cplusplus >= 201103L
-
-#ifdef __cplusplus
+#elif __cplusplus >= 201103L
 
 #include <atomic>
 typedef std::atomic<long long> prom_value;
+#define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
-#else  // not __cplusplus
+#elif __STDC_VERSION__ >= 201112L
 
 // not available if __STDC_NO_ATOMICS__ defined
 // support in gcc 4.6, clang 3.1
 // available in glibc 2.28 (Ubuntu 18.10), FreeBSD 12, macOS Catalina
 #include <stdatomic.h>			// C11 (optional feature)
 typedef atomic_llong prom_value;
-
-#endif // not __cplusplus
-
 #define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
 // atomic_fetch_add_explicit(&atomic_counter, 1, memory_order_relaxed)
