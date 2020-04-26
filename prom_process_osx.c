@@ -117,7 +117,6 @@ PROM_GETTER_GAUGE(num_threads,
 PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
     if (read_proc() < 0)
 	return 0.0;
-
     return threads;
 }
 #endif
