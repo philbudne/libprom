@@ -57,7 +57,7 @@ static long tix;			/* ticks per second */
 // this sort of thing was the norm in PDP-10 assembler.
 #define PROC_VARS \
     PROC_INT(pid) \
-    PROC_BUF(comm, "(%[^)])") \
+    PROC_BUF(comm, 32, "(%[^)])") \
     PROC_VAR(state, char, "%c") \
     PROC_INT(ppid) \
     PROC_INT(pgrp) \
@@ -93,7 +93,7 @@ static long tix;			/* ticks per second */
 // (so it can be shared between getters)
 static struct {
 #define PROC_VAR(NAME, TYPE, FMT) TYPE NAME;
-#define PROC_BUF(NAME, FMT) char NAME [64];
+#define PROC_BUF(NAME, SIZE, FMT) char NAME [SIZE];
     PROC_VARS
 #undef PROC_VAR
 #undef PROC_BUF
@@ -101,7 +101,7 @@ static struct {
 
 static const char nvars[] = {
 #define PROC_VAR(NAME, TYPE, FMT) 1,
-#define PROC_BUF(NAME, FMT) 1,
+#define PROC_BUF(NAME, SIZE, FMT) 1,
     PROC_VARS
 #undef PROC_VAR
 #undef PROC_BUF
@@ -134,12 +134,12 @@ _read_proc(void) {
     // ORDINARILY fscanf is a mistake (win/lose)!
     n = fscanf(f,
 #define PROC_VAR(NAME, TYPE, FMT) FMT " "
-#define PROC_BUF(NAME, FMT) FMT " "
+#define PROC_BUF(NAME, SIZE, FMT) FMT " "
 	   PROC_VARS		// expand formats
 #undef PROC_VAR
 #undef PROC_BUF
 #define PROC_VAR(NAME, TYPE, FMT) ,&proc_stat.NAME
-#define PROC_BUF(NAME, FMT) ,proc_stat.NAME
+#define PROC_BUF(NAME, SIZE, FMT) ,proc_stat.NAME
 	   PROC_VARS		// expand ptrs to vars
 #undef PROC_VAR
 #undef PROC_BUF
