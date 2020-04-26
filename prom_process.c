@@ -71,7 +71,11 @@ PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
 }
 
 ////////////////
-// XXX make this optional?
+// Of dubious value : make optional?
+
+// Linux man page says:
+// "Since the value is a long, on machines with a 32-bit long either
+// this limit is at most 2 GiB, or this resource is unlimited."
 
 PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
 		  "Maximum amount of virtual memory available in bytes");
