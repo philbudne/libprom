@@ -64,10 +64,8 @@ _read_proc(void) {
     }
 
     length = sizeof(ki);
-    if (sysctl(mib, 4, &ki, &length, NULL, 0) < 0) {
-	perror("sysctl");
+    if (sysctl(mib, 4, &ki, &length, NULL, 0) < 0)
 	return -1;
-    }
     seconds = ((ki.ki_rusage.ru_utime.tv_sec  +
 		ki.ki_rusage.ru_stime.tv_sec) +
 	       (ki.ki_rusage.ru_utime.tv_usec +
