@@ -79,7 +79,7 @@ prom_pool_worker(void *arg) {
 	fcntl(fd, F_SETFD, 0);		/* clear nonblock */
 	f = fdopen(fd, "r+");
 	if (f) {
-	    sleep(1);
+	    //sleep(1);
 	    prom_http_request(f, f, exporter_name);
 	    fclose(f);
 	}
