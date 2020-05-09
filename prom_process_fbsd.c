@@ -126,12 +126,27 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 
 ////////////////
 // not even implemented by Java client library!!
-#if 0			      // off: no good deed goes unpunished!
 
+#if 0	// doesn't seem to work: always returns same value
+// belongs in prom_process_jemalloc??
+#include <malloc_np.h>
 PROM_GETTER_GAUGE(process_heap_bytes,"Process heap size in bytes");
 
 PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
-    // mallctl stats.allocated??
+#define MIBLEN 2
+    static size_t miblen, mib[MIBLEN];
+    size_t len, allocated;
+    if (miblen == 0) {
+	miblen = MIBLEN;
+	if (mallctlnametomib("stats.allocated", mib, &miblen) != 0) {
+	    miblen = 0;
+	    return -1;
+	}
+    }
+    allocated = 0;
+    len = sizeof(allocated);
+    if (mallctlbymib(mib, miblen, (void *)&allocated, &len, NULL, 0) == 0)
+	return allocated;
     return -1;
 }
 #endif

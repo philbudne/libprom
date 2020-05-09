@@ -205,7 +205,7 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 
 ////////////////
 // not even implemented by Java client library!!
-#if 0			      // off: no good deed goes unpunished!
+#ifdef PROCESS_HEAP
 #include <malloc.h>	      // mallinfo
 
 PROM_GETTER_GAUGE(process_heap_bytes,"Process heap size in bytes");

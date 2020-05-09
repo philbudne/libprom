@@ -18,6 +18,7 @@ ifeq ($(OS), Linux)
 LIBOBJS += prom_process_linux.o
 # optional (better resolution); set to zero to disable
 USE_GETRUSAGE = 1
+PROCESS_HEAP = 1
 endif
 
 ifeq ($(OS), FreeBSD)
@@ -29,8 +30,12 @@ LIBOBJS += prom_process_osx.o
 USE_GETRUSAGE = 1
 endif
 
-ifeq ($(USE_GETRUSAGE), 1)
+ifdef USE_GETRUSAGE
 CFLAGS += -DUSE_GETRUSAGE
+endif
+
+ifdef PROCESS_HEAP
+CFLAGS += -DPROCESS_HEAP
 endif
 
 libprom.a: $(LIBOBJS)
