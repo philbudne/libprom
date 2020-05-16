@@ -213,7 +213,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 	  #NAME, HELP, PROM_FORMAT_COUNTER_FN_NAME(NAME) }
 
 ////////////////
-// declare counter with static labels
+// declare counter with a single label name, and a static set of values.
 
 // XXX should take label name!!!! need prom_labeled_var for slot!!!!!
 // NOTE: no formatter!! If output order needs to be tightly controlled
@@ -230,6 +230,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 
 ////////
 // declare a label on a PROM_LABELED_COUNTER with a "simple" value
+// (could also have PROM_GETTER_COUNTER_LABEL)
 
 #define PROM_SIMPLE_COUNTER_LABEL(NAME,LABEL_) \
     struct prom_simple_label_var _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL_) PROM_SECTION_ATTR = \
