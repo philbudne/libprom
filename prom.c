@@ -142,6 +142,20 @@ prom_format_getter(PROM_FILE *f, struct prom_var *pvp) {
     return prom_format_value_dbl(f, &state, pgvp->getter());
 }
 
+// prom_var.format for a simple value label
+// returns negative on failure
+int
+prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp) {
+    struct prom_simple_label_var *pslv = (struct prom_simple_label_var *)pvp;
+    struct prom_labeled_var *parent = pslv->parent_var;
+    int state;
+
+    prom_format_start(f, &state, &parent->base);
+    prom_format_label(f, &state, parent->label, "%s", pvp->name);
+    return prom_format_value_pv(f, &state, pslv->value);
+    return 0;
+}
+
 static int
 prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     switch (pvp->type) {
@@ -154,8 +168,13 @@ prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     case HISTOGRAM:
 	PROM_PRINTF(f, "# TYPE %s%s histogram\n", prom_namespace, pvp->name);
 	break;
+    case LABEL:
+	break;
     }
-    PROM_PRINTF(f, "# HELP %s%s %s.\n", prom_namespace, pvp->name, pvp->help);
+    if (pvp->help)		// LABEL lacks help
+	PROM_PRINTF(f, "# HELP %s%s %s.\n", prom_namespace, pvp->name, pvp->help);
+    if (!pvp->format)		// LABELED vars have no value of their own
+	return 0;
     return (pvp->format)(f, pvp);
 }
 

@@ -81,7 +81,8 @@ extern "C" {
 enum prom_var_type {
     GAUGE,
     COUNTER,
-    HISTOGRAM
+    HISTOGRAM,
+    LABEL
 };
 
 // empirical: works on both x86 and x86-64
@@ -115,12 +116,25 @@ struct prom_hist_var {
     double sum;			// XXX need lock?
 } PROM_ALIGN;
 
-extern time_t prom_now;
+struct prom_labeled_var {
+    struct prom_var base;
+    const char *label;
+} PROM_ALIGN;
+
+struct prom_simple_label_var {
+    struct prom_var base;		// NOTE: name is label string!
+    prom_value value;
+    struct prom_labeled_var *parent_var; // variable being labeled
+    // could have pointer to next label...
+} PROM_ALIGN;
+
+extern time_t prom_now;			// set by prom_format_vars
 #define STALE(T) ((T) == 0 || (prom_now - (T)) > 10)
 
 int prom_format_simple(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
+int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 
 // all prom_vars end up contiguous in a loader segment
 #define PROM_SECTION_NAME prometheus
@@ -148,10 +162,15 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 // users shouldn't touch prom_var innards
 // (prevent decrement of counters and increment on non-simple vars)
 // *BUT* allows multiple declaration of same metric name with different types!
+// (COULD prevent this by always declaring "char PROM_name;"?!)
 #define _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SIMPLE_COUNTER_##NAME
 #define _PROM_GETTER_COUNTER_NAME(NAME) PROM_GETTER_COUNTER_##NAME
 #define _PROM_FORMAT_COUNTER_NAME(NAME) PROM_FORMAT_COUNTER_##NAME
+#define _PROM_LABELED_COUNTER_NAME(NAME) PROM_LABELED_COUNTER_##NAME
 
+#define _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL) PROM_COUNTER_##NAME##__LABEL__##LABEL
+
+// naming for functions:
 #define PROM_GETTER_COUNTER_FN_NAME(NAME) NAME##_getter
 #define PROM_FORMAT_COUNTER_FN_NAME(NAME) NAME##_format
 
@@ -192,6 +211,37 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
     struct prom_var _PROM_FORMAT_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
 	{ sizeof(struct prom_var), COUNTER, \
 	  #NAME, HELP, PROM_FORMAT_COUNTER_FN_NAME(NAME) }
+
+////////////////
+// declare counter with static labels
+
+// XXX should take label name!!!! need prom_labeled_var for slot!!!!!
+// NOTE: no formatter!! If output order needs to be tightly controlled
+// could declare declare label subvars in a special segment, and have
+// a (single) initializer function run thru the special segment,
+// putting the labels into a linked list attached to the main var, and
+// have the formatter for the main var iterate over the list,
+// formatting the var/labels/values....
+
+#define PROM_LABELED_COUNTER(NAME,LABEL,HELP) \
+    struct prom_labeled_var _PROM_LABELED_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_labeled_var), COUNTER,			\
+	  #NAME, HELP, NULL }, LABEL }
+
+////////
+// declare a label on a PROM_LABELED_COUNTER with a "simple" value
+
+#define PROM_SIMPLE_COUNTER_LABEL(NAME,LABEL_) \
+    struct prom_simple_label_var _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL_) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_simple_label_var), LABEL,			\
+	    #LABEL_, NULL, prom_format_simple_label }, 0, &_PROM_LABELED_COUNTER_NAME(NAME) }
+
+// ONLY work on "simple" counters
+#define PROM_SIMPLE_COUNTER_LABEL_INC(NAME,LABEL) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL).value, 1)
+
+#define PROM_SIMPLE_COUNTER_LABEL_INC_BY(NAME,LABEL,BY) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL).value, BY)
 
 ////////////////////////////////////////////////////////////////
 // GAUGEs:
