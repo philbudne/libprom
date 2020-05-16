@@ -31,28 +31,13 @@
 
 #include "prom.h"
 
-static prom_value code200, code400, code500, code503;
-
-PROM_FORMAT_COUNTER(promhttp_metric_handler_requests_total,
+PROM_LABELED_COUNTER(promhttp_metric_handler_requests_total, "code",
 		  "Total number of scrapes by HTTP status code");
 
-PROM_FORMAT_COUNTER_FN_PROTO(promhttp_metric_handler_requests_total) {
-    int state;
-
-#define FMT_CODE(CODE) \
-    do { \
-	prom_format_start(f, &state, pvp); \
-	prom_format_label(f, &state, "code", "%d", CODE); \
-	prom_format_value(f, &state, "%lld", code##CODE); \
-    } while (0)
-
-    FMT_CODE(200);
-    FMT_CODE(400);
-    FMT_CODE(500);
-    FMT_CODE(503);
-
-    return 0;
-}
+PROM_SIMPLE_COUNTER_LABEL(promhttp_metric_handler_requests_total,200); // returned page
+PROM_SIMPLE_COUNTER_LABEL(promhttp_metric_handler_requests_total,400); // bad request
+PROM_SIMPLE_COUNTER_LABEL(promhttp_metric_handler_requests_total,500); // internal error
+PROM_SIMPLE_COUNTER_LABEL(promhttp_metric_handler_requests_total,503); // service unavail
 
 // dodge to avoid complaints about unused result
 // (until the compilers get smarter)
@@ -65,14 +50,14 @@ void
 prom_http_interr(int fd)
 {
     send_str(fd, "HTTP/1.0 500 Internal Server Error\r\n");
-    code500++;
+    PROM_SIMPLE_COUNTER_LABEL_INC(promhttp_metric_handler_requests_total,500);
 }
 
 void
 prom_http_unavail(int fd)
 {
     send_str(fd, "HTTP/1.0 503 Service Unavailable\r\n");
-    code503++;
+    PROM_SIMPLE_COUNTER_LABEL_INC(promhttp_metric_handler_requests_total,503);
 }
 #undef SEND
 
@@ -100,7 +85,7 @@ prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
     default:
 	// give an HTTP 1.0 response regardless; trying to keep it 99%
 	PROM_PRINTF(out, "HTTP/1.0 400 Bad Request\r\n\r\n");
-	code400++;
+	PROM_SIMPLE_COUNTER_LABEL_INC(promhttp_metric_handler_requests_total,400);
 	return 0; // for testing: not an I/O error!
     }
 
@@ -113,11 +98,10 @@ prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
 	// XXX need Date: ?? I hope not!!!
     }
 
-    code200++;
+    PROM_SIMPLE_COUNTER_LABEL_INC(promhttp_metric_handler_requests_total,200);
     if (strcmp(path, "/metrics") == 0) {
-	// XXX include version=0.0.4?
 	if (proto[0])
-	    PROM_PRINTF(out, "Content-Type: text/plain; charset=utf-8\r\n\r\n");
+	    PROM_PRINTF(out, "Content-Type: text/plain; version=0.0.4; charset=utf-8\r\n\r\n");
 
 	// XXX if Content-Length: becomess necessary,
 	// handle by providing/requiring a prom_fmemopen function??
@@ -125,7 +109,7 @@ prom_http_request(PROM_FILE *in, PROM_FILE *out, const char *who) {
     }
     else {
 	if (proto[0])
-	    PROM_PRINTF(out, "Content-Type: text/html; version=0.0.4; charset=utf-8\r\n\r\n");
+	    PROM_PRINTF(out, "Content-Type: text/html; charset=utf-8\r\n\r\n");
 	PROM_PRINTF(out,
 		    "<html>\r\n"
 		    "<head><title>%s exporter</title></head>\r\n"
