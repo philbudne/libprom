@@ -179,7 +179,8 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 #define _PROM_GETTER_COUNTER_LABEL_NAME(NAME,LABEL) PROM_GETTER_COUNTER_##NAME##__LABEL__##LABEL
 
 // avoids multiple declarations of same name with different type/class
-#define _PROM_NS(NAME) char PROM_NS_##NAME = 1
+// (cause ld error)
+#define _PROM_NS(NAME) const char PROM_NS_##NAME = 1
 
 // naming for functions:
 #define PROM_GETTER_COUNTER_FN_NAME(NAME) NAME##_getter
@@ -219,6 +220,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
     struct prom_getter_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_getter_var), COUNTER, #NAME, HELP, \
 	  prom_format_getter }, PROM_GETTER_COUNTER_FN_NAME(NAME) }
+
+// declare var & function in one swell foop
+#define PROM_GETTER_COUNTER_FN(NAME,HELP) \
+    PROM_GETTER_COUNTER(NAME,HELP); \
+    PROM_GETTER_COUNTER_FN_PROTO(NAME)
 
 ////////////////
 // declare a counter with a function to format names (typ. w/ labels)
@@ -271,6 +277,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 	    #LABEL_, NULL, prom_format_getter_label }, \
 	  &_PROM_LABELED_COUNTER_NAME(NAME), \
 	  PROM_GETTER_COUNTER_LABEL_FN_NAME(NAME,LABEL_) }
+
+// declare var & function in one line:
+#define PROM_GETTER_COUNTER_LABEL_FN(NAME,LABEL_) \
+    PROM_GETTER_COUNTER_LABEL(NAME,LABEL_); \
+    PROM_GETTER_COUNTER_LABEL_FN_PROTO(NAME,LABEL_)
 
 ////////////////////////////////////////////////////////////////
 // GAUGEs:
@@ -331,6 +342,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 	{ { sizeof(struct prom_getter_var), GAUGE, #NAME, HELP, \
 	  prom_format_getter }, PROM_GETTER_GAUGE_FN_NAME(NAME) }
 
+// declare var and function in one line:
+#define PROM_GETTER_GAUGE_FN(NAME,HELP) \
+    PROM_GETTER_GAUGE(NAME,HELP); \
+    PROM_GETTER_GAUGE_FN_PROTO(NAME)
+
 ////////////////
 // declare a gauge with a function to format names (typ. w/ labels)
 // use PROM_FORMAT_GAUGE_FN_PROTO(NAME) { ...... } to declare
@@ -340,6 +356,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
     struct prom_var _PROM_FORMAT_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
 	{ sizeof(struct prom_var), GAUGE, \
 	  #NAME, HELP, PROM_FORMAT_GAUGE_FN_NAME(NAME) }
+
+// declare var and function:
+#define PROM_FORMAT_GAUGE_FN(NAME,HELP) \
+    PROM_FORMAT_GAUGE(NAME,HELP); \
+    PROM_FORMAT_GAUGE_FN_PROTO(NAME)
 
 ////////////////
 // declare gauge with a single label name, and a static set of values.
@@ -381,6 +402,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 	    #LABEL_, NULL, prom_format_getter_label }, \
 	  &_PROM_LABELED_GAUGE_NAME(NAME), \
 	  PROM_GETTER_GAUGE_LABEL_FN_NAME(NAME,LABEL_) }
+
+// declare var and function:
+#define PROM_GETTER_GAUGE_LABEL_FN(NAME,LABEL_) \
+    PROM_GETTER_GAUGE_LABEL(NAME,LABEL_); \
+    PROM_GETTER_GAUGE_LABEL_FN_PROTO(NAME,LABEL_)
 
 ////////////////////////////////
 // declare a histogram variable
