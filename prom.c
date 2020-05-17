@@ -165,6 +165,20 @@ prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp) {
     return 0;
 }
 
+// prom_var.format for a getter value label
+// returns negative on failure
+int
+prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp) {
+    struct prom_getter_label_var *pglv = (struct prom_getter_label_var *)pvp;
+    struct prom_labeled_var *parent = pglv->parent_var;
+    int state;
+
+    prom_format_start(f, &state, &parent->base);
+    prom_format_label(f, &state, parent->label, "%s", pvp->name);
+    return prom_format_value_pv(f, &state, pglv->getter());
+    return 0;
+}
+
 static int
 prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     switch (pvp->type) {
