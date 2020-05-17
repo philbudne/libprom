@@ -6,21 +6,14 @@ PROM_SIMPLE_COUNTER_LABEL(pooh, honeypots);
 PROM_SIMPLE_COUNTER_LABEL(pooh, friends);
 PROM_SIMPLE_COUNTER_LABEL(pooh, trees);
 
-void
+int
 main() {
-    prom_format_vars(stdout);
-
-    puts("---");
     PROM_SIMPLE_COUNTER_LABEL_INC(pooh, honeypots);
-    prom_format_vars(stdout);
-
-    puts("---");
     PROM_SIMPLE_COUNTER_LABEL_INC(pooh, trees);
-    prom_format_vars(stdout);
-
-    puts("---");
     /* Eeyore, Kanga, Roo, C.R., WOL, Piglet, Tigger, Rabbit, Gopher */
     PROM_SIMPLE_COUNTER_LABEL_INC_BY(pooh, friends, 9);
     prom_format_vars(stdout);
+
+    return 0;
 }
 

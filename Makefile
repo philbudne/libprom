@@ -4,11 +4,10 @@ OS := $(shell uname)
 
 CFLAGS=-O -g -Wextra -Wall -Wmissing-prototypes
 
-TESTS=test_http test_hist
-
 ALL=libprom.a
 all:	$(ALL)
 
+TESTS=test_http test_hist test_labeled
 test_progs: $(TESTS)
 
 LIBOBJS=prom.o prom_http.o prom_process.o prom_histogram.o \
@@ -55,6 +54,9 @@ TEST_HIST=tests/002_hist.c libprom.a
 test_hist: $(TEST_HIST)
 	$(CC) $(TEST_CFLAGS) -o test_hist $(TEST_HIST) $(TESTLIBS)
 
+TEST_LABELED=tests/005_labeled.c libprom.a
+test_labeled: $(TEST_LABELED)
+	$(CC) $(TEST_CFLAGS) -o test_labeled $(TEST_LABELED) $(TESTLIBS)
 
 ################
 clean:

@@ -48,22 +48,21 @@ typedef long long prom_value;
 typedef std::atomic<long long> prom_value;
 #define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
-#elif __STDC_VERSION__ >= 201112L
+#elif __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
 
-// not available if __STDC_NO_ATOMICS__ defined
 // support in gcc 4.6, clang 3.1
 // available in glibc 2.28 (Ubuntu 18.10), FreeBSD 12, macOS Catalina
 #include <stdatomic.h>			// C11 (optional feature)
 typedef atomic_llong prom_value;
 #define PROM_ATOMIC_INCREMENT(VAR, BY) VAR += BY
 
+#else // not C11
+
 // atomic_fetch_add_explicit(&atomic_counter, 1, memory_order_relaxed)
 // on plain variable may suffice.
 
 // _could_ make do with gcc 6.4:
 // __atomic_fetch_add(&var, 1, __ATOMIC_SEQ_CST) ??
-
-#else // not C11
 
 // works with gcc 4.1.2
 typedef long long prom_value;
@@ -74,7 +73,7 @@ typedef long long prom_value;
 
 ////////////////
 #ifdef __cplusplus
-// NOTE!  Requires g++ -std=c++17
+// NOTE!  Requires g++ -std=c++17 (to allow initialization of atomic)
 extern "C" {
 #endif
 
@@ -134,6 +133,7 @@ extern time_t prom_now;			// set by prom_format_vars
 int prom_format_simple(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_getter(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
+int prom_format_labeled(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 
 // all prom_vars end up contiguous in a loader segment
@@ -161,14 +161,14 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 // for internal use only
 // users shouldn't touch prom_var innards
 // (prevent decrement of counters and increment on non-simple vars)
-// *BUT* allows multiple declaration of same metric name with different types!
-// (COULD prevent this by always declaring "char PROM_name;"?!)
 #define _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SIMPLE_COUNTER_##NAME
 #define _PROM_GETTER_COUNTER_NAME(NAME) PROM_GETTER_COUNTER_##NAME
 #define _PROM_FORMAT_COUNTER_NAME(NAME) PROM_FORMAT_COUNTER_##NAME
 #define _PROM_LABELED_COUNTER_NAME(NAME) PROM_LABELED_COUNTER_##NAME
-
 #define _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL) PROM_COUNTER_##NAME##__LABEL__##LABEL
+
+// avoids multiple declarations of same name with different type/class
+#define _PROM_NS(NAME) char PROM_NS_##NAME = 1
 
 // naming for functions:
 #define PROM_GETTER_COUNTER_FN_NAME(NAME) NAME##_getter
@@ -184,6 +184,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare a simple counter
 #define PROM_SIMPLE_COUNTER(NAME,HELP) \
+    _PROM_NS(NAME); \
     struct prom_simple_var _PROM_SIMPLE_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_simple_var), COUNTER, \
 	  #NAME, HELP, prom_format_simple }, 0 }
@@ -198,6 +199,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare counter with function to fetch (non-decreasing) value
 #define PROM_GETTER_COUNTER(NAME,HELP) \
+    _PROM_NS(NAME); \
     PROM_GETTER_COUNTER_FN_PROTO(NAME); \
     struct prom_getter_var _PROM_GETTER_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_getter_var), COUNTER, #NAME, HELP, \
@@ -207,6 +209,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 // declare a counter with a function to format names (typ. w/ labels)
 // use PROM_FORMAT_COUNTER_FN_PROTO(NAME) { ...... } to declare
 #define PROM_FORMAT_COUNTER(NAME,HELP) \
+    _PROM_NS(NAME); \
     PROM_FORMAT_COUNTER_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
 	{ sizeof(struct prom_var), COUNTER, \
@@ -215,8 +218,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare counter with a single label name, and a static set of values.
 
-// XXX should take label name!!!! need prom_labeled_var for slot!!!!!
-// NOTE: no formatter!! If output order needs to be tightly controlled
+// If output order needs to be tightly controlled
 // could declare declare label subvars in a special segment, and have
 // a (single) initializer function run thru the special segment,
 // putting the labels into a linked list attached to the main var, and
@@ -224,17 +226,18 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 // formatting the var/labels/values....
 
 #define PROM_LABELED_COUNTER(NAME,LABEL,HELP) \
+    _PROM_NS(NAME); \
     struct prom_labeled_var _PROM_LABELED_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
-	{ { sizeof(struct prom_labeled_var), COUNTER,			\
-	  #NAME, HELP, NULL }, LABEL }
+	{ { sizeof(struct prom_labeled_var), COUNTER, \
+	  #NAME, HELP, prom_format_labeled }, LABEL }
 
 ////////
 // declare a label on a PROM_LABELED_COUNTER with a "simple" value
 // (could also have PROM_GETTER_COUNTER_LABEL)
 
 #define PROM_SIMPLE_COUNTER_LABEL(NAME,LABEL_) \
-    struct prom_simple_label_var _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL_) PROM_SECTION_ATTR = \
-	{ { sizeof(struct prom_simple_label_var), LABEL,			\
+    struct prom_simple_label_var _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL_) PROM_SECTION_ATTR =	\
+	{ { sizeof(struct prom_simple_label_var), LABEL, \
 	    #LABEL_, NULL, prom_format_simple_label }, 0, &_PROM_LABELED_COUNTER_NAME(NAME) }
 
 // ONLY work on "simple" counters
@@ -269,6 +272,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare a simple gauge
 #define PROM_SIMPLE_GAUGE(NAME,HELP) \
+    _PROM_NS(NAME); \
     struct prom_simple_var _PROM_SIMPLE_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_simple_var), GAUGE, \
 	    #NAME,HELP, prom_format_simple}, 0 }
@@ -289,6 +293,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 ////////////////
 // declare gauge with functio to fetch (non-decreasing) value
 #define PROM_GETTER_GAUGE(NAME,HELP) \
+    _PROM_NS(NAME); \
     PROM_GETTER_GAUGE_FN_PROTO(NAME); \
     struct prom_getter_var _PROM_GETTER_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_getter_var), GAUGE, #NAME, HELP, \
@@ -298,6 +303,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 // declare a gauge with a function to format names (typ. w/ labels)
 // use PROM_FORMAT_GAUGE_FN_PROTO(NAME) { ...... } to declare
 #define PROM_FORMAT_GAUGE(NAME,HELP) \
+    _PROM_NS(NAME); \
     PROM_FORMAT_GAUGE_FN_PROTO(NAME); \
     struct prom_var _PROM_FORMAT_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
 	{ sizeof(struct prom_var), GAUGE, \
@@ -309,6 +315,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 
 // histogram with custom limits
 #define PROM_HISTOGRAM_CUSTOM(NAME,HELP,LIMITS) \
+    _PROM_NS(NAME); \
     struct prom_hist_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
 	{ {sizeof(struct prom_hist_var), HISTOGRAM, \
 	   #NAME, HELP, prom_format_histogram }, \
@@ -316,6 +323,7 @@ int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 
 // histogram with default limits
 #define PROM_HISTOGRAM(NAME,HELP) \
+    _PROM_NS(NAME); \
     struct prom_hist_var _PROM_HISTOGRAM_NAME(NAME) PROM_SECTION_ATTR = \
 	{ { sizeof(struct prom_hist_var), HISTOGRAM, \
 	  #NAME, HELP, prom_format_histogram }, \

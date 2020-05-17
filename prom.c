@@ -142,6 +142,15 @@ prom_format_getter(PROM_FILE *f, struct prom_var *pvp) {
     return prom_format_value_dbl(f, &state, pgvp->getter());
 }
 
+// prom_var.format for a labeled var
+// no value of its own
+int
+prom_format_labeled(PROM_FILE *f, struct prom_var *pvp) {
+    (void) f;
+    (void) pvp;
+    return 0;
+}
+
 // prom_var.format for a simple value label
 // returns negative on failure
 int
@@ -171,10 +180,8 @@ prom_format_one(PROM_FILE *f, struct prom_var *pvp) {
     case LABEL:
 	break;
     }
-    if (pvp->help)		// LABEL lacks help
+    if (pvp->help)		// LABEL (subvars) lack help
 	PROM_PRINTF(f, "# HELP %s%s %s.\n", prom_namespace, pvp->name, pvp->help);
-    if (!pvp->format)		// LABELED vars have no value of their own
-	return 0;
     return (pvp->format)(f, pvp);
 }
 
