@@ -236,6 +236,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 	{ sizeof(struct prom_var), COUNTER, \
 	  #NAME, HELP, PROM_FORMAT_COUNTER_FN_NAME(NAME) }
 
+// declare var & function:
+#define PROM_FORMAT_COUNTER_FN(NAME,HELP) \
+    PROM_FORMAT_COUNTER(NAME,HELP); \
+    PROM_FORMAT_COUNTER_FN_PROTO(NAME)
+
 ////////////////
 // declare counter with a single label name, and a static set of values.
 
@@ -334,7 +339,7 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
     _PROM_SIMPLE_GAUGE_NAME(NAME).value = VAL
 
 ////////////////
-// declare gauge with functio to fetch (non-decreasing) value
+// declare gauge with function to fetch (non-decreasing) value
 #define PROM_GETTER_GAUGE(NAME,HELP) \
     _PROM_NS(NAME); \
     PROM_GETTER_GAUGE_FN_PROTO(NAME); \
