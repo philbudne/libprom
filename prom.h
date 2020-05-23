@@ -115,6 +115,8 @@ struct prom_hist_var {
     double sum;			// XXX need lock?
 } PROM_ALIGN;
 
+// ****************
+
 struct prom_labeled_var {
     struct prom_var base;
     const char *label;
@@ -136,6 +138,33 @@ struct prom_getter_label_var {
     double (*getter)(void);
 } PROM_ALIGN;
 
+// ****************
+
+struct prom_2labeled_var {
+    struct prom_var base;
+    const char *label1;
+    const char *label2;
+} PROM_ALIGN;
+
+// have prom_label_var sub/base class?
+// would be needed to make list of all label vars
+struct prom_simple_2label_var {
+    struct prom_var base;		// NOTE: name is label string!
+    struct prom_2labeled_var *parent_var; // variable being labeled
+    const char *label2;			// second label string
+    // could have pointer to next ...2label_var
+    prom_value value;
+} PROM_ALIGN;
+
+struct prom_getter_2label_var {
+    struct prom_var base;		// NOTE: name is label string!
+    struct prom_2labeled_var *parent_var; // variable being labeled
+    const char *label2;			// second label string
+    // could have pointer to next ...2label_var
+    double (*getter)(void);
+} PROM_ALIGN;
+
+// ********************************
 extern time_t prom_now;			// set by prom_format_vars
 #define STALE(T) ((T) == 0 || (prom_now - (T)) > 10)
 
@@ -145,6 +174,9 @@ int prom_format_histogram(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_labeled(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_simple_label(PROM_FILE *f, struct prom_var *pvp);
 int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
+int prom_format_2labeled(PROM_FILE *f, struct prom_var *pvp);
+int prom_format_simple_2label(PROM_FILE *f, struct prom_var *pvp);
+int prom_format_getter_2label(PROM_FILE *f, struct prom_var *pvp);
 
 // all prom_vars end up contiguous in a loader segment
 #define PROM_SECTION_NAME prometheus
@@ -177,6 +209,11 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 #define _PROM_LABELED_COUNTER_NAME(NAME) PROM_LABELED_COUNTER_##NAME
 #define _PROM_SIMPLE_COUNTER_LABEL_NAME(NAME,LABEL) PROM_SIMPLE_COUNTER_##NAME##__LABEL__##LABEL
 #define _PROM_GETTER_COUNTER_LABEL_NAME(NAME,LABEL) PROM_GETTER_COUNTER_##NAME##__LABEL__##LABEL
+#define _PROM_2LABELED_COUNTER_NAME(NAME) PROM_2LABELED_COUNTER_##NAME
+#define _PROM_SIMPLE_COUNTER_2LABEL_NAME(NAME,LABEL1,LABEL2) \
+    PROM_SIMPLE_COUNTER_##NAME##__LABEL1__##LABEL1##__LABEL2__##LABEL2
+#define _PROM_GETTER_COUNTER_2LABEL_NAME(NAME,LABEL1,LABEL2) \
+    PROM_GETTER_COUNTER_##NAME##__LABEL1__##LABEL1##__LABEL2__##LABEL2
 
 // avoids multiple declarations of same name with different type/class
 // (cause ld error)
@@ -186,16 +223,21 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_GETTER_COUNTER_FN_NAME(NAME) NAME##_getter
 #define PROM_FORMAT_COUNTER_FN_NAME(NAME) NAME##_format
 #define PROM_GETTER_COUNTER_LABEL_FN_NAME(NAME,LABEL) NAME##_LABEL_##LABEL##_getter
+#define PROM_GETTER_COUNTER_2LABEL_FN_NAME(NAME,LABEL1,LABEL2) NAME##_LABEL1_##LABEL1##__LABEL2__##LABEL2##_getter
 
 // use to create functions!!
 #define PROM_GETTER_COUNTER_FN_PROTO(NAME) \
     static double PROM_GETTER_COUNTER_FN_NAME(NAME)(void)
+
 #define PROM_FORMAT_COUNTER_FN_PROTO(NAME) \
     static int PROM_FORMAT_COUNTER_FN_NAME(NAME)(PROM_FILE *f, \
 						 struct prom_var *pvp)
 
 #define PROM_GETTER_COUNTER_LABEL_FN_PROTO(NAME,LABEL) \
     static double PROM_GETTER_COUNTER_LABEL_FN_NAME(NAME,LABEL)(void)
+
+#define PROM_GETTER_COUNTER_2LABEL_FN_PROTO(NAME,LABEL1,LABEL2) \
+    static double PROM_GETTER_COUNTER_2LABEL_FN_NAME(NAME,LABEL1,LABEL2)(void)
 
 ////////////////
 // declare a simple counter
@@ -287,6 +329,47 @@ int prom_format_getter_label(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_GETTER_COUNTER_LABEL_FN(NAME,LABEL_) \
     PROM_GETTER_COUNTER_LABEL(NAME,LABEL_); \
     PROM_GETTER_COUNTER_LABEL_FN_PROTO(NAME,LABEL_)
+
+////////////////
+// declare counter with a two label names, and a static set of values.
+
+#define PROM_2LABELED_COUNTER(NAME,LABEL1,LABEL2,HELP) \
+    _PROM_NS(NAME); \
+    struct prom_2labeled_var _PROM_2LABELED_COUNTER_NAME(NAME) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_2labeled_var), COUNTER, \
+	  #NAME, HELP, prom_format_2labeled }, LABEL1, LABEL2 }
+
+////////
+// declare labels on a PROM_2LABELED_COUNTER with a "simple" value
+
+#define PROM_SIMPLE_COUNTER_2LABEL(NAME, LABEL1, LABEL2) \
+    struct prom_simple_2label_var _PROM_SIMPLE_COUNTER_2LABEL_NAME(NAME,LABEL1,LABEL2) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_simple_2label_var), LABEL, \
+	    #LABEL1, NULL, prom_format_simple_2label }, \
+	  &_PROM_2LABELED_COUNTER_NAME(NAME), #LABEL2, 0 }
+
+// ONLY work on "simple" counters
+#define PROM_SIMPLE_COUNTER_2LABEL_INC(NAME,LABEL1, LABEL2) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_COUNTER_2LABEL_NAME(NAME,LABEL1,LABEL2).value, 1)
+
+#define PROM_SIMPLE_COUNTER_2LABEL_INC_BY(NAME,LABEL1,LABEL2,BY) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_COUNTER_2LABEL_NAME(NAME,LABEL1,LABEL2).value, BY)
+
+////////
+// declare a label on a PROM_2LABELED_COUNTER with a "getter" value
+#define PROM_GETTER_COUNTER_2LABEL(NAME,LABEL1,LABEL2) \
+    PROM_GETTER_COUNTER_2LABEL_FN_PROTO(NAME,LABEL1,LABEL2); \
+    struct prom_getter_2label_var _PROM_GETTER_COUNTER_2LABEL_NAME(NAME,LABEL1,LABEL2) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_getter_2label_var), LABEL, \
+	    #LABEL1, NULL, prom_format_getter_2label }, \
+	  &_PROM_2LABELED_COUNTER_NAME(NAME), #LABEL2, \
+	  PROM_GETTER_COUNTER_2LABEL_FN_NAME(NAME,LABEL1, LABEL2) }
+
+// declare var & function in one line:
+#define PROM_GETTER_COUNTER_2LABEL_FN(NAME,LABEL1,LABEL2) \
+    PROM_GETTER_COUNTER_2LABEL(NAME,LABEL1,LABEL2); \
+    PROM_GETTER_COUNTER_2LABEL_FN_PROTO(NAME,LABEL1,LABEL2)
+
 
 ////////////////////////////////////////////////////////////////
 // GAUGEs:

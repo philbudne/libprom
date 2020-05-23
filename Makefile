@@ -7,11 +7,11 @@ CFLAGS=-O -g -Wextra -Wall -Wmissing-prototypes
 ALL=libprom.a
 all:	$(ALL)
 
-TESTS=test_http test_hist test_labeled
+TESTS=test_http test_hist test_labeled test_2label
 test_progs: $(TESTS)
 
 LIBOBJS=prom.o prom_http.o prom_process.o prom_histogram.o \
-	prom_listen.o prom_accept.o prom_dispatch.o 
+	prom_listen.o prom_accept.o prom_dispatch.o prom_2label.o
 
 ifeq ($(OS), Linux)
 LIBOBJS += prom_process_linux.o
@@ -57,6 +57,10 @@ test_hist: $(TEST_HIST)
 TEST_LABELED=tests/005_labeled.c libprom.a
 test_labeled: $(TEST_LABELED)
 	$(CC) $(TEST_CFLAGS) -o test_labeled $(TEST_LABELED) $(TESTLIBS)
+
+TEST_2LABEL=tests/006_2label.c libprom.a
+test_2label: $(TEST_2LABEL)
+	$(CC) $(TEST_CFLAGS) -o test_2label $(TEST_2LABEL) $(TESTLIBS)
 
 ################
 clean:
