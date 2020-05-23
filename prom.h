@@ -115,7 +115,7 @@ struct prom_hist_var {
     double sum;			// XXX need lock?
 } PROM_ALIGN;
 
-// ****************
+// **************** single label
 
 struct prom_labeled_var {
     struct prom_var base;
@@ -138,7 +138,7 @@ struct prom_getter_label_var {
     double (*getter)(void);
 } PROM_ALIGN;
 
-// ****************
+// **************** two labels
 
 struct prom_2labeled_var {
     struct prom_var base;
@@ -385,11 +385,17 @@ int prom_format_getter_2label(PROM_FILE *f, struct prom_var *pvp);
 #define _PROM_LABELED_GAUGE_NAME(NAME) PROM_LABELED_GAUGE_##NAME
 #define _PROM_SIMPLE_GAUGE_LABEL_NAME(NAME,LABEL) PROM_SIMPLE_GAUGE_##NAME##__LABEL__##LABEL
 #define _PROM_GETTER_GAUGE_LABEL_NAME(NAME,LABEL) PROM_GETTER_GAUGE_##NAME##__LABEL__##LABEL
+#define _PROM_2LABELED_GAUGE_NAME(NAME) PROM_2LABELED_GAUGE_##NAME
+#define _PROM_SIMPLE_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2) \
+    PROM_SIMPLE_GAUGE_##NAME##__LABEL1__##LABEL1##__LABEL2__##LABEL2
+#define _PROM_GETTER_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2) \
+    PROM_GETTER_GAUGE_##NAME##__LABEL1__##LABEL1##__LABEL2__##LABEL2
 
 // use to create functions!!
 #define PROM_GETTER_GAUGE_FN_NAME(NAME) NAME##_getter
 #define PROM_FORMAT_GAUGE_FN_NAME(NAME) NAME##_format
 #define PROM_GETTER_GAUGE_LABEL_FN_NAME(NAME,LABEL) NAME##_LABEL_##LABEL##_getter
+#define PROM_GETTER_GAUGE_2LABEL_FN_NAME(NAME,LABEL1,LABEL2) NAME##_LABEL1_##LABEL1##__LABEL2__##LABEL2##_getter
 
 #define PROM_GETTER_GAUGE_FN_PROTO(NAME) \
     static double PROM_GETTER_GAUGE_FN_NAME(NAME)(void)
@@ -399,6 +405,9 @@ int prom_format_getter_2label(PROM_FILE *f, struct prom_var *pvp);
 
 #define PROM_GETTER_GAUGE_LABEL_FN_PROTO(NAME,LABEL) \
     static double PROM_GETTER_GAUGE_LABEL_FN_NAME(NAME,LABEL)(void)
+
+#define PROM_GETTER_GAUGE_2LABEL_FN_PROTO(NAME,LABEL1,LABEL2) \
+    static double PROM_GETTER_GAUGE_2LABEL_FN_NAME(NAME,LABEL1,LABEL2)(void)
 
 ////////////////
 // declare a simple gauge
@@ -495,6 +504,49 @@ int prom_format_getter_2label(PROM_FILE *f, struct prom_var *pvp);
 #define PROM_GETTER_GAUGE_LABEL_FN(NAME,LABEL_) \
     PROM_GETTER_GAUGE_LABEL(NAME,LABEL_); \
     PROM_GETTER_GAUGE_LABEL_FN_PROTO(NAME,LABEL_)
+
+////////////////
+// declare counter with a two label names, and a static set of values.
+
+#define PROM_2LABELED_GAUGE(NAME,LABEL1,LABEL2,HELP) \
+    _PROM_NS(NAME); \
+    struct prom_2labeled_var _PROM_2LABELED_GAUGE_NAME(NAME) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_2labeled_var), GAUGE, \
+	  #NAME, HELP, prom_format_2labeled }, LABEL1, LABEL2 }
+
+////////
+// declare labels on a PROM_2LABELED_GAUGE with a "simple" value
+
+#define PROM_SIMPLE_GAUGE_2LABEL(NAME, LABEL1, LABEL2) \
+    struct prom_simple_2label_var _PROM_SIMPLE_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_simple_2label_var), LABEL, \
+	    #LABEL1, NULL, prom_format_simple_2label }, \
+	  &_PROM_2LABELED_GAUGE_NAME(NAME), #LABEL2, 0 }
+
+// ONLY work on "simple" gauges
+#define PROM_SIMPLE_GAUGE_2LABEL_INC(NAME,LABEL1, LABEL2) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2).value, 1)
+
+#define PROM_SIMPLE_GAUGE_2LABEL_INC_BY(NAME,LABEL1,LABEL2,BY) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2).value, BY)
+
+#define PROM_SIMPLE_GAUGE_2LABEL_DEC(NAME,LABEL1, LABEL2) \
+    PROM_ATOMIC_INCREMENT(_PROM_SIMPLE_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2).value, -1)
+
+////////
+// declare a label on a PROM_2LABELED_GAUGE with a "getter" value
+#define PROM_GETTER_GAUGE_2LABEL(NAME,LABEL1,LABEL2) \
+    PROM_GETTER_GAUGE_2LABEL_FN_PROTO(NAME,LABEL1,LABEL2); \
+    struct prom_getter_2label_var _PROM_GETTER_GAUGE_2LABEL_NAME(NAME,LABEL1,LABEL2) PROM_SECTION_ATTR = \
+	{ { sizeof(struct prom_getter_2label_var), LABEL, \
+	    #LABEL1, NULL, prom_format_getter_2label }, \
+	  &_PROM_2LABELED_GAUGE_NAME(NAME), #LABEL2, \
+	  PROM_GETTER_GAUGE_2LABEL_FN_NAME(NAME,LABEL1, LABEL2) }
+
+// declare var & function in one line:
+#define PROM_GETTER_GAUGE_2LABEL_FN(NAME,LABEL1,LABEL2) \
+    PROM_GETTER_GAUGE_2LABEL(NAME,LABEL1,LABEL2); \
+    PROM_GETTER_GAUGE_2LABEL_FN_PROTO(NAME,LABEL1,LABEL2)
 
 ////////////////////////////////
 // declare a histogram variable
