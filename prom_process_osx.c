@@ -89,20 +89,16 @@ read_proc(void) {
 ////////////////////////////////////////////////////////////////
 // implement variables
 
-PROM_GETTER_GAUGE(process_virtual_memory_bytes,
-		  "Virtual memory size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
+PROM_GETTER_GAUGE_FN(process_virtual_memory_bytes,
+		     "Virtual memory size in bytes") {
     if (read_proc() < 0)
 	return 0.0;
     return vsz;
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_resident_memory_bytes,
-		  "Resident memory size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
+PROM_GETTER_GAUGE_FN(process_resident_memory_bytes,
+		     "Resident memory size in bytes") {
     if (read_proc() < 0)
 	return 0.0;
     return rss;				/* XXX */
@@ -111,10 +107,8 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 ////////////////
 // not in the process_ namespace
 #if 0
-PROM_GETTER_GAUGE(num_threads,
-		  "Number of process threads");
-
-PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
+PROM_GETTER_GAUGE_FN(num_threads,
+		     "Number of process threads") {
     if (read_proc() < 0)
 	return 0.0;
     return threads;

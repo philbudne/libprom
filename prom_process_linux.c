@@ -169,11 +169,8 @@ read_proc(void) {
 // implement variables
 
 #ifndef USE_GETRUSAGE
-PROM_GETTER_COUNTER(process_cpu_seconds_total,
-		    "Total user and system CPU time spent in seconds");
-
-PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
-
+PROM_GETTER_COUNTER_FN(process_cpu_seconds_total,
+		       "Total user and system CPU time spent in seconds") {
     if (read_proc() < 0)
 	return 0;
 
@@ -184,20 +181,16 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
 #endif
 
 ////////////////
-PROM_GETTER_GAUGE(process_virtual_memory_bytes,
-		  "Virtual memory size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
+PROM_GETTER_GAUGE_FN(process_virtual_memory_bytes,
+		     "Virtual memory size in bytes") {
     if (read_proc() < 0)
 	return 0.0;
     return (double)proc_stat.vsize;
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_resident_memory_bytes,
-		  "Resident memory size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
+PROM_GETTER_GAUGE_FN(process_resident_memory_bytes,
+		     "Resident memory size in bytes") {
     if (read_proc() < 0)
 	return 0.0;
     return ((double)proc_stat.rss) * pagesize;
@@ -208,9 +201,7 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 #ifdef PROCESS_HEAP
 #include <malloc.h>	      // mallinfo
 
-PROM_GETTER_GAUGE(process_heap_bytes,"Process heap size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
+PROM_GETTER_GAUGE_FN(process_heap_bytes,"Process heap size in bytes") {
     struct mallinfo mi = mallinfo();
     return (double)mi.uordblks;
 }
@@ -219,10 +210,7 @@ PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
 ////////////////
 // not in the process_ namespace
 
-PROM_GETTER_GAUGE(num_threads,
-		  "Number of process threads");
-
-PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
+PROM_GETTER_GAUGE_FN(num_threads, "Number of process threads") {
     if (read_proc() < 0)
 	return 0.0;
     return proc_stat.threads;

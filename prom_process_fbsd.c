@@ -94,10 +94,8 @@ read_proc(void) {
 ////////////////////////////////////////////////////////////////
 // implement variables
 
-PROM_GETTER_COUNTER(process_cpu_seconds_total,
-		    "Total user and system CPU time spent in seconds");
-
-PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
+PROM_GETTER_COUNTER_FN(process_cpu_seconds_total,
+		       "Total user and system CPU time spent in seconds") {
     if (read_proc() < 0)
 	return 0.0;
 
@@ -105,20 +103,16 @@ PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_virtual_memory_bytes,
-		  "Virtual memory size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_bytes) {
+PROM_GETTER_GAUGE_FN(process_virtual_memory_bytes,
+		     "Virtual memory size in bytes") {
     if (read_proc() < 0)
 	return 0.0;
     return vsz;
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_resident_memory_bytes,
-		  "Resident memory size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
+PROM_GETTER_GAUGE_FN(process_resident_memory_bytes,
+		     "Resident memory size in bytes") {
     if (read_proc() < 0)
 	return 0.0;
     return rss;				/* XXX */
@@ -130,9 +124,7 @@ PROM_GETTER_GAUGE_FN_PROTO(process_resident_memory_bytes) {
 #if 0	// doesn't seem to work: always returns same value
 // belongs in prom_process_jemalloc??
 #include <malloc_np.h>
-PROM_GETTER_GAUGE(process_heap_bytes,"Process heap size in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
+PROM_GETTER_GAUGE_FN(process_heap_bytes,"Process heap size in bytes") {
 #define MIBLEN 2
     static size_t miblen, mib[MIBLEN];
     size_t len, allocated;
@@ -153,10 +145,7 @@ PROM_GETTER_GAUGE_FN_PROTO(process_heap_bytes) {
 
 ////////////////
 // not in the process_ namespace
-PROM_GETTER_GAUGE(num_threads,
-		  "Number of process threads");
-
-PROM_GETTER_GAUGE_FN_PROTO(num_threads) {
+PROM_GETTER_GAUGE_FN(num_threads, "Number of process threads") {
     if (read_proc() < 0)
 	return 0.0;
 

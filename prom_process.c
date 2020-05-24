@@ -28,10 +28,8 @@ get_start_time(void) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_open_fds,
-		  "Number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
+PROM_GETTER_GAUGE_FN(process_open_fds,
+		     "Number of open file descriptors") {
     DIR *d;
     static unsigned fds;
     DECLARE_LOCK(fds_lock);
@@ -58,10 +56,8 @@ PROM_GETTER_GAUGE_FN_PROTO(process_open_fds) {
 }
 
 ////////////////
-PROM_GETTER_GAUGE(process_max_fds,
-		  "Maximum number of open file descriptors");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
+PROM_GETTER_GAUGE_FN(process_max_fds,
+		     "Maximum number of open file descriptors") {
     static struct rlimit maxfds;
 
     if (!maxfds.rlim_cur)
@@ -77,10 +73,8 @@ PROM_GETTER_GAUGE_FN_PROTO(process_max_fds) {
 // "Since the value is a long, on machines with a 32-bit long either
 // this limit is at most 2 GiB, or this resource is unlimited."
 
-PROM_GETTER_GAUGE(process_virtual_memory_max_bytes,
-		  "Maximum amount of virtual memory available in bytes");
-
-PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
+PROM_GETTER_GAUGE_FN(process_virtual_memory_max_bytes,
+		     "Maximum amount of virtual memory available in bytes") {
     static struct rlimit maxvsz;
 
     if (!maxvsz.rlim_cur)
@@ -91,10 +85,8 @@ PROM_GETTER_GAUGE_FN_PROTO(process_virtual_memory_max_bytes) {
 
 ////////////////
 #ifdef USE_GETRUSAGE
-PROM_GETTER_COUNTER(process_cpu_seconds_total,
-		    "Total user and system CPU time spent in seconds");
-
-PROM_GETTER_COUNTER_FN_PROTO(process_cpu_seconds_total) {
+PROM_GETTER_COUNTER_FN(process_cpu_seconds_total,
+		       "Total user and system CPU time spent in seconds") {
     struct rusage ru;
 
     if (getrusage(RUSAGE_SELF, &ru) < 0)
